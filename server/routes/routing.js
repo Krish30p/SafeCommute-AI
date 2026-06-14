@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const crypto = require('crypto');
 const { SafetyScoresCache } = require('../db');
 const { calculateSafetyScore } = require('../services/safetyEngine');
@@ -77,6 +78,23 @@ const SEEDED_VADODARA_ROUTES = {
   ]
 };
 
+// Helper to generate dynamic warnings based on safety metrics
+function generateWarnings(safety) {
+  const warnings = [];
+  if (safety && safety.breakdown) {
+    if (safety.breakdown.incidentDensity && safety.breakdown.incidentDensity.score < 85) {
+      warnings.push("Recent incidents reported nearby");
+    }
+    if (safety.breakdown.lighting && safety.breakdown.lighting.score < 60) {
+      warnings.push("Poor lighting on some stretches");
+    }
+    if (safety.breakdown.transitCoverage && safety.breakdown.transitCoverage.score < 40) {
+      warnings.push("Limited transit presence");
+    }
+  }
+  return warnings;
+}
+
 router.post('/compare', async (req, res) => {
   const { origin, destination, originCoords, destinationCoords, womenSafetyMode } = req.body;
 
@@ -92,82 +110,99 @@ router.post('/compare', async (req, res) => {
   const mapboxToken = process.env.VITE_MAPBOX_TOKEN;
   let routes = [];
 
-  // Detect if we are testing the main Vadodara Station -> Akota demo route
-  const isVadodaraDemo = 
-    Math.abs(oLng - 73.1812) < 0.01 && 
-    Math.abs(oLat - 22.3072) < 0.01 && 
-    Math.abs(dLng - 73.1723) < 0.01 && 
-    Math.abs(dLat - 22.2960) < 0.01;
+  // 1. Try to fetch real street routes from Mapbox Directions API
+  if (mapboxToken && mapboxToken.trim() !== "" && !mapboxToken.includes("xxxx")) {
+    try {
+      console.log(`📡 Fetching real-world routes from Mapbox Directions API: [${oLng}, ${oLat}] -> [${dLng}, ${dLat}]`);
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${oLng},${oLat};${dLng},${dLat}?geometries=geojson&alternatives=true&overview=full&access_token=${mapboxToken}`;
+      const response = await axios.get(url);
+      
+      if (response.data && response.data.routes && response.data.routes.length > 0) {
+        routes = response.data.routes.map((mr, idx) => ({
+          name: `Route ${String.fromCharCode(65 + idx)}`,
+          geometry: mr.geometry,
+          duration: Math.round(mr.duration),
+          distance: Math.round(mr.distance),
+          warnings: []
+        }));
+        console.log(`✅ Successfully loaded ${routes.length} real street routes from Mapbox.`);
+      }
+    } catch (err) {
+      console.error("⚠️ Failed to fetch routes from Mapbox Directions API:", err.message);
+    }
+  }
 
-  if (isVadodaraDemo) {
-    console.log("📍 Vadodara Railway Station -> Akota demo route detected. Utilizing pre-seeded routes.");
-    routes = [
-      {
-        name: "Route A",
-        label: "FASTEST",
-        geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.fastest },
-        duration: 14 * 60, // 14 mins in seconds
-        distance: 4200,   // 4.2 km in meters
-        warnings: ["Poor lighting on 2 stretches", "Sayajigunj underpass incident zone"]
-      },
-      {
-        name: "Route B",
-        label: "SAFEST",
-        geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.safest },
-        duration: 18 * 60, // 18 mins in seconds
-        distance: 4900,   // 4.9 km in meters
-        warnings: []
-      },
-      {
-        name: "Route C",
-        label: "ALTERNATIVE",
-        geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.alternative },
-        duration: 16 * 60, // 16 mins in seconds
-        distance: 4500,   // 4.5 km in meters
-        warnings: ["Moderate lighting near Sayajigunj main road"]
-      }
-    ];
-  } else {
-    // Generate simulated routes for any other custom coordinates
-    routes = [
-      {
-        name: "Route A",
-        label: "FASTEST",
-        geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], 0) },
-        duration: Math.round(10 + Math.random() * 10) * 60,
-        distance: Math.round(3000 + Math.random() * 2000),
-        warnings: ["Minor lighting gaps"]
-      },
-      {
-        name: "Route B",
-        label: "SAFEST",
-        geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], 1.5) },
-        duration: Math.round(14 + Math.random() * 10) * 60,
-        distance: Math.round(3500 + Math.random() * 2500),
-        warnings: []
-      },
-      {
-        name: "Route C",
-        label: "ALTERNATIVE",
-        geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], -1.2) },
-        duration: Math.round(12 + Math.random() * 10) * 60,
-        distance: Math.round(3200 + Math.random() * 2200),
-        warnings: []
-      }
-    ];
+  // 2. Fallback to simulated/pre-seeded routes if Mapbox Directions API failed or is not available
+  if (routes.length === 0) {
+    console.log("⚠️ Falling back to simulated/pre-seeded route geometries.");
+    const isVadodaraDemo = 
+      Math.abs(oLng - 73.1812) < 0.01 && 
+      Math.abs(oLat - 22.3072) < 0.01 && 
+      Math.abs(dLng - 73.1723) < 0.01 && 
+      Math.abs(dLat - 22.2960) < 0.01;
+
+    if (isVadodaraDemo) {
+      console.log("📍 Vadodara Railway Station -> Akota demo route detected. Utilizing pre-seeded routes.");
+      routes = [
+        {
+          name: "Route A",
+          geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.fastest },
+          duration: 14 * 60,
+          distance: 4200,
+          warnings: []
+        },
+        {
+          name: "Route B",
+          geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.safest },
+          duration: 18 * 60,
+          distance: 4900,
+          warnings: []
+        },
+        {
+          name: "Route C",
+          geometry: { type: "LineString", coordinates: SEEDED_VADODARA_ROUTES.alternative },
+          duration: 16 * 60,
+          distance: 4500,
+          warnings: []
+        }
+      ];
+    } else {
+      routes = [
+        {
+          name: "Route A",
+          geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], 0) },
+          duration: Math.round(10 + Math.random() * 10) * 60,
+          distance: Math.round(3000 + Math.random() * 2000),
+          warnings: []
+        },
+        {
+          name: "Route B",
+          geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], 1.5) },
+          duration: Math.round(14 + Math.random() * 10) * 60,
+          distance: Math.round(3500 + Math.random() * 2500),
+          warnings: []
+        },
+        {
+          name: "Route C",
+          geometry: { type: "LineString", coordinates: generateSimulatedRoute([oLng, oLat], [dLng, dLat], -1.2) },
+          duration: Math.round(12 + Math.random() * 10) * 60,
+          distance: Math.round(3200 + Math.random() * 2200),
+          warnings: []
+        }
+      ];
+    }
   }
 
   try {
     const now = new Date();
-    // Compute safety score for each route and attach Claude risk predictions
+    
+    // Compute safety score and generate warnings/AI advisories for each route
     for (let r of routes) {
-      // Create hash of geometry coordinates to cache safety scores
       const routeHash = crypto
         .createHash('sha256')
         .update(JSON.stringify(r.geometry.coordinates) + `_mode_${womenSafetyMode}`)
         .digest('hex');
 
-      // Check Cache
       const cached = await SafetyScoresCache.findOne({ route_hash: routeHash });
 
       let safety;
@@ -182,7 +217,6 @@ router.post('/compare', async (req, res) => {
           womenSafetyMode: !!womenSafetyMode
         });
         
-        // Save to cache
         await SafetyScoresCache.findOneAndUpdate(
           { route_hash: routeHash },
           { score: safety.score, breakdown: safety.breakdown },
@@ -192,8 +226,8 @@ router.post('/compare', async (req, res) => {
 
       r.safetyScore = safety.score;
       r.safetyBreakdown = safety;
+      r.warnings = generateWarnings(safety);
       
-      // Inject safety advisories using Claude Service
       r.aiAdvisory = await getRiskPrediction(
         {
           originName: origin || "Origin",
@@ -206,13 +240,53 @@ router.post('/compare', async (req, res) => {
       );
     }
 
-    // Sort/Re-rank logic
+    // 3. Dynamically assign FASTEST and SAFEST labels
+    if (routes.length > 0) {
+      routes.forEach(r => r.label = "ALTERNATIVE");
+
+      let fastestIdx = 0;
+      let minDuration = Infinity;
+      routes.forEach((r, idx) => {
+        if (r.duration < minDuration) {
+          minDuration = r.duration;
+          fastestIdx = idx;
+        }
+      });
+
+      let safestIdx = 0;
+      let maxSafetyScore = -Infinity;
+      routes.forEach((r, idx) => {
+        if (r.safetyScore > maxSafetyScore) {
+          maxSafetyScore = r.safetyScore;
+          safestIdx = idx;
+        }
+      });
+
+      if (fastestIdx === safestIdx) {
+        routes[safestIdx].label = "SAFEST";
+        let nextFastestIdx = -1;
+        let minNextDuration = Infinity;
+        routes.forEach((r, idx) => {
+          if (idx !== safestIdx && r.duration < minNextDuration) {
+            minNextDuration = r.duration;
+            nextFastestIdx = idx;
+          }
+        });
+        if (nextFastestIdx !== -1) {
+          routes[nextFastestIdx].label = "FASTEST";
+        }
+      } else {
+        routes[fastestIdx].label = "FASTEST";
+        routes[safestIdx].label = "SAFEST";
+      }
+    }
+
+    // 4. Sort/Re-rank logic
     let sortedRoutes = [...routes];
     if (womenSafetyMode) {
-      // Re-rank routes: Safest route (Route B or highest safetyScore) rises to top
+      // Re-rank: prioritize safest route first
       sortedRoutes.sort((a, b) => b.safetyScore - a.safetyScore);
       
-      // Find fastest route and safest route to calculate time delta
       const fastestRoute = [...routes].sort((a, b) => a.duration - b.duration)[0];
       const safestRoute = sortedRoutes[0];
       

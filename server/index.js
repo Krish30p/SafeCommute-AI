@@ -93,7 +93,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, async () => {
   console.log(`🚀 SafeCommute AI backend listening on port ${PORT}`);
