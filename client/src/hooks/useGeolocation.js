@@ -51,7 +51,7 @@ export function useGeolocation() {
     // Set first coordinate immediately
     setLocation(simulationCoordsRef.current[0]);
 
-    // Tick every 2000ms to move to next coordinate point
+    // Tick every 7000ms to move to next coordinate point
     simulationIntervalRef.current = setInterval(() => {
       const nextIndex = simulationIndexRef.current + 1;
       if (nextIndex < simulationCoordsRef.current.length) {
@@ -61,7 +61,7 @@ export function useGeolocation() {
         // Simulation finished, stop
         stopSimulation();
       }
-    }, 2000 / speedMultiplier);
+    }, 7000 / speedMultiplier);
   };
 
   const stopSimulation = () => {

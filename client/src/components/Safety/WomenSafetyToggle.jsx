@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Shield, ShieldAlert } from 'lucide-react';
 
 export default function WomenSafetyToggle({ onChange }) {
@@ -7,12 +7,25 @@ export default function WomenSafetyToggle({ onChange }) {
     return saved === 'true';
   });
 
+  const isFirstMount = useRef(true);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   useEffect(() => {
     localStorage.setItem('womenSafetyMode', enabled);
-    if (onChange) {
-      onChange(enabled);
+    
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
     }
-  }, [enabled, onChange]);
+
+    if (onChangeRef.current) {
+      onChangeRef.current(enabled);
+    }
+  }, [enabled]);
 
   return (
     <button

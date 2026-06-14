@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { Eye, EyeOff } from 'lucide-react';
 import { getScoreColorHex } from '../../utils/safetyScore';
 
 // Default Center: Vadodara
@@ -52,6 +53,7 @@ export default function MapView({
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [activePopup, setActivePopup] = useState(null); // Offline popup state
+  const [showIncidents, setShowIncidents] = useState(false); // Default to false (hidden) per user request
   
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
   const isMockMap = !mapboxToken || mapboxToken.trim() === "";
@@ -100,42 +102,44 @@ export default function MapView({
       markersRef.current.push(userMarker);
     }
 
-    // Draw incident markers
-    incidents.forEach(inc => {
-      const el = document.createElement('div');
-      el.className = `w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-110`;
-      
-      let color = 'bg-warnAmber';
-      if (inc.type === 'harassment') color = 'bg-dangerRed';
-      else if (inc.type === 'broken_light') color = 'bg-yellow-500';
-      else if (inc.type === 'dark_street') color = 'bg-orange-500';
-      
-      el.className += ` ${color} border-2 border-white`;
-      
-      const icon = inc.type === 'harassment' ? '⚠️' : inc.type === 'dark_street' ? '🌑' : '💡';
-      el.innerHTML = `<span class="text-xs font-bold text-white">${icon}</span>`;
-
-      // Setup popup
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setHTML(`
-          <div class="text-sm">
-            <div class="font-bold capitalize border-b border-darkBorder pb-1 text-red-400 flex items-center gap-1">
-              ${icon} ${inc.type.replace('_', ' ')}
-            </div>
-            <div class="mt-1 text-gray-300 font-medium">${inc.description}</div>
-            <div class="mt-2 text-xs text-gray-500 font-semibold">${inc.hours_ago ? `${Math.round(inc.hours_ago)} hours ago` : 'just reported'}</div>
-          </div>
-        `);
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([inc.lng, inc.lat])
-        .setPopup(popup)
-        .addTo(map);
+    // Draw incident markers if toggled on
+    if (showIncidents) {
+      incidents.forEach(inc => {
+        const el = document.createElement('div');
+        el.className = `w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-110`;
         
-      markersRef.current.push(marker);
-    });
+        let color = 'bg-warnAmber';
+        if (inc.type === 'harassment') color = 'bg-dangerRed';
+        else if (inc.type === 'broken_light') color = 'bg-yellow-500';
+        else if (inc.type === 'dark_street') color = 'bg-orange-500';
+        
+        el.className += ` ${color} border-2 border-white`;
+        
+        const icon = inc.type === 'harassment' ? '⚠️' : inc.type === 'dark_street' ? '🌑' : '💡';
+        el.innerHTML = `<span class="text-xs font-bold text-white">${icon}</span>`;
 
-  }, [map, incidents, userLocation, isMockMap]);
+        // Setup popup
+        const popup = new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`
+            <div class="text-sm">
+              <div class="font-bold capitalize border-b border-darkBorder pb-1 text-red-400 flex items-center gap-1">
+                ${icon} ${inc.type.replace('_', ' ')}
+              </div>
+              <div class="mt-1 text-gray-300 font-medium">${inc.description}</div>
+              <div class="mt-2 text-xs text-gray-500 font-semibold">${inc.hours_ago ? `${Math.round(inc.hours_ago)} hours ago` : 'just reported'}</div>
+            </div>
+          `);
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([inc.lng, inc.lat])
+          .setPopup(popup)
+          .addTo(map);
+          
+        markersRef.current.push(marker);
+      });
+    }
+
+  }, [map, incidents, userLocation, isMockMap, showIncidents]);
 
   // 3. Mapbox Draw Routes
   useEffect(() => {
@@ -215,6 +219,23 @@ export default function MapView({
   // Render Section
   return (
     <div className="relative w-full h-full bg-darkBg overflow-hidden">
+      {/* Floating Map Toggle Controls */}
+      <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-2">
+        <button
+          onClick={() => {
+            setShowIncidents(!showIncidents);
+            if (showIncidents) {
+              setActivePopup(null);
+            }
+          }}
+          className="px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-700/50 hover:bg-slate-800 text-gray-300 hover:text-white transition-all backdrop-blur-md flex items-center gap-2 text-xs font-semibold shadow-lg shadow-black/40 cursor-pointer animate-fade-in"
+          title={showIncidents ? "Hide Safety Incidents" : "Show Safety Incidents"}
+        >
+          {showIncidents ? <EyeOff size={14} className="text-red-400 animate-pulse" /> : <Eye size={14} className="text-safeGreen" />}
+          <span>{showIncidents ? "Hide Incidents" : "Show Incidents"}</span>
+        </button>
+      </div>
+
       {isMockMap ? (
         // --- OFFLINE/SIMULATED GIS GRAPHIC ---
         <div className="w-full h-full relative flex items-center justify-center select-none bg-[#090D14] border border-darkBorder">
@@ -268,7 +289,7 @@ export default function MapView({
             })}
 
             {/* Draw Incident Pins */}
-            {incidents.map((inc, i) => {
+            {showIncidents && incidents.map((inc, i) => {
               const { x, y } = projectCoords(inc.lng, inc.lat, 800, 600);
               let color = '#F59E0B'; // warn
               if (inc.type === 'harassment') color = '#EF4444'; // red
@@ -306,7 +327,7 @@ export default function MapView({
           </svg>
 
           {/* Interactive SVG Popups */}
-          {activePopup && (() => {
+          {showIncidents && activePopup && (() => {
             const { x, y } = projectCoords(activePopup.lng, activePopup.lat, 800, 600);
             return (
               <div 

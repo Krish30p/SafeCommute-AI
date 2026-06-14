@@ -14,7 +14,10 @@ export default function App() {
   const [sharingToken, setSharingToken] = useState('');
   const [routesData, setRoutesData] = useState(null);
   const [activeTrip, setActiveTrip] = useState(null);
-  const [womenSafetyMode, setWomenSafetyMode] = useState(false);
+  const [womenSafetyMode, setWomenSafetyMode] = useState(() => {
+    const saved = localStorage.getItem('womenSafetyMode');
+    return saved === 'true';
+  });
   const [incidents, setIncidents] = useState([]);
   const [showReportModal, setShowReportModal] = useState(false);
 
