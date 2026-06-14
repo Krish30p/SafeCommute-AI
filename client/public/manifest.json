@@ -1,0 +1,21 @@
+{
+  "short_name": "SafeCommute",
+  "name": "SafeCommute AI - Indian Urban Safety Routing",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/external-flatart-icons-flat-flatarticons/128/external-shield-protection-and-security-flatart-icons-flat-flatarticons-1.png",
+      "type": "image/png",
+      "sizes": "128x128"
+    },
+    {
+      "src": "https://img.icons8.com/external-flatart-icons-flat-flatarticons/512/external-shield-protection-and-security-flatart-icons-flat-flatarticons-1.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0D1117",
+  "theme_color": "#1D9E75",
+  "display": "standalone",
+  "orientation": "portrait"
+}
