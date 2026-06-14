@@ -12,7 +12,8 @@ export default function RouteSelection({
   onTripStarted, 
   onBack,
   womenSafetyMode,
-  onSafetyModeChange
+  onSafetyModeChange,
+  onRoutesDataUpdate
 }) {
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [startingTrip, setStartingTrip] = useState(false);
@@ -79,11 +80,10 @@ export default function RouteSelection({
         womenSafetyMode: newVal
       });
       
-      // Update routes data in parent state
-      routesData.routes = response.data.routes;
-      routesData.womenSafetyMode = response.data.womenSafetyMode;
-      routesData.bannerMessage = response.data.bannerMessage;
-      routesData.timeDeltaMessage = response.data.timeDeltaMessage;
+      // Update routes data in parent state via callback
+      if (onRoutesDataUpdate) {
+        onRoutesDataUpdate(response.data);
+      }
       
       // Reset selected route index
       setSelectedRouteIndex(0);

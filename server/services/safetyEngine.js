@@ -92,21 +92,40 @@ async function getIncidentScore(routeCoords) {
   // Convert route coordinates to WKT LINESTRING
   const wktLineString = `LINESTRING(${routeCoords.map(c => `${c[0]} ${c[1]}`).join(', ')})`;
 
-  // Query incidents within 500m of route line (using Geography types)
+  // Query incidents within 500m of route line
   let incidents;
   try {
-    // Check database mode to optimize Postgres specific GIS functions vs simulated query
     if (db.getMode() === 'POSTGRES') {
-      incidents = await db.query(`
-        SELECT *, 
-          EXTRACT(EPOCH FROM (NOW() - reported_at))/3600 AS hours_ago
-        FROM incidents
-        WHERE ST_DWithin(
-          ST_MakePoint(lng, lat)::geography,
-          ST_GeomFromText($1, 4326)::geography,
-          500
-        )
-      `, [wktLineString]);
+      // Try PostGIS spatial query first
+      try {
+        incidents = await db.query(`
+          SELECT *, 
+            EXTRACT(EPOCH FROM (NOW() - reported_at))/3600 AS hours_ago
+          FROM incidents
+          WHERE ST_DWithin(
+            ST_MakePoint(lng, lat)::geography,
+            ST_GeomFromText($1, 4326)::geography,
+            500
+          )
+        `, [wktLineString]);
+      } catch (postgisErr) {
+        // PostGIS not installed — fall back to fetching all incidents
+        // and filtering by distance in JS (same logic as mock mode)
+        console.warn("PostGIS unavailable, using JS distance filter for incidents:", postgisErr.message);
+        incidents = await db.query(
+          'SELECT *, EXTRACT(EPOCH FROM (NOW() - reported_at))/3600 AS hours_ago FROM incidents'
+        );
+        // Filter by distance to route in JS
+        const allRows = incidents.rows || [];
+        incidents = {
+          rows: allRows.filter(inc => {
+            return routeCoords.some(([lng, lat]) => {
+              const dist = haversineDistance(inc.lat, inc.lng, lat, lng);
+              return dist <= 500;
+            });
+          })
+        };
+      }
     } else {
       // In Mock mode, we pass the WKT to runMockQuery which parses it out
       incidents = await db.query(`
@@ -122,19 +141,27 @@ async function getIncidentScore(routeCoords) {
   if (rows.length === 0) return 100;
 
   const decayedWeight = rows.reduce((sum, inc) => {
-    // Time decay: incidents older than 48 hours receive a reduction.
-    // Exponential decay: e^(-0.03 * hours_ago). At 48 hours, e^(-0.03*48) = e^(-1.44) ≈ 0.23 (less than half).
-    // Let's use the decay formula:
     const hours = Number(inc.hours_ago) || 0;
-    const decay = Math.exp(-0.015 * hours); // e^(-0.015 * 48) = e^(-0.72) ≈ 0.48 (~half weight at 48 hours)
-    return sum + ((inc.weight || 1.0) * decay);
+    // Ensure weight is a valid number (guard against corrupted data)
+    const weight = typeof inc.weight === 'number' ? inc.weight : 1.0;
+    const decay = Math.exp(-0.015 * hours);
+    return sum + (weight * decay);
   }, 0);
 
-  // Score decreases as decayed weight increases. Max penalty: decayedWeight * 20.
-  // 1 major incident with full weight (1.0) decays to 0.5 after 2 days.
-  // A weight sum of 5.0 reduces score to 0.
   const incidentScoreVal = Math.round(100 - (decayedWeight * 20));
   return Math.max(0, Math.min(100, incidentScoreVal));
+}
+
+// Haversine distance helper (meters)
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 module.exports = { calculateSafetyScore };

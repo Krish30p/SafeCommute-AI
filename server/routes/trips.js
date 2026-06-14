@@ -63,8 +63,8 @@ function scheduleCheckInAlerts(tripId, userId, destinationName, eta) {
         
         // Update status to expired
         await db.query(
-          "UPDATE trips SET status = 'expired-alert' WHERE id = $1",
-          [tripId]
+          "UPDATE trips SET status = $1, ended_at = $2 WHERE id = $3",
+          ['expired-alert', new Date().toISOString(), tripId]
         );
       }
     } catch (err) {
@@ -170,8 +170,8 @@ router.post('/:id/end', async (req, res) => {
 
   try {
     const updated = await db.query(
-      "UPDATE trips SET status = 'completed', ended_at = NOW() WHERE id = $1 RETURNING *",
-      [tripId]
+      "UPDATE trips SET status = $1, ended_at = $2 WHERE id = $3",
+      ['completed', new Date().toISOString(), tripId]
     );
 
     // Cancel scheduled cron jobs
@@ -190,8 +190,8 @@ router.post('/:id/checkin', async (req, res) => {
 
   try {
     const updated = await db.query(
-      "UPDATE trips SET status = 'checked-in', ended_at = NOW() WHERE id = $1 RETURNING *",
-      [tripId]
+      "UPDATE trips SET status = $1, ended_at = $2 WHERE id = $3",
+      ['checked-in', new Date().toISOString(), tripId]
     );
 
     // Cancel scheduled cron jobs
@@ -270,8 +270,8 @@ router.post('/:id/simulate-expiry', async (req, res) => {
 
     // Update status to expired
     const updated = await db.query(
-      "UPDATE trips SET status = 'expired-alert' WHERE id = $1 RETURNING *",
-      [tripId]
+      "UPDATE trips SET status = $1, ended_at = $2 WHERE id = $3",
+      ['expired-alert', new Date().toISOString(), tripId]
     );
 
     cancelTripJobs(tripId);

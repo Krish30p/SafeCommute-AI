@@ -152,7 +152,7 @@ export default function PublicTracking({ token, onBackHome }) {
           ) : (
             <div className="bg-darkCard p-4 rounded-xl border border-darkBorder space-y-4">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400 font-semibold">ETA ETA</span>
+                <span className="text-gray-400 font-semibold">ETA</span>
                 <span className="text-safeGreen font-bold flex items-center gap-1">
                   <Clock size={12} />
                   {formatTime(trip.eta)}

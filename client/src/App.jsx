@@ -85,6 +85,10 @@ export default function App() {
     }
   };
 
+  const handleRoutesDataUpdate = (newData) => {
+    setRoutesData(newData);
+  };
+
   const handleBackToSearch = () => {
     setRoutesData(null);
     setPage('home');
@@ -133,6 +137,7 @@ export default function App() {
             onBack={handleBackToSearch}
             womenSafetyMode={womenSafetyMode}
             onSafetyModeChange={handleSafetyModeChange}
+            onRoutesDataUpdate={handleRoutesDataUpdate}
           />
         )}
 

@@ -150,7 +150,7 @@ export default function SOSButton({ location, tripId }) {
               className="w-full py-2.5 bg-dangerRed text-white text-xs font-black rounded-lg hover:bg-dangerRed/90 transition-colors"
               style={{ minHeight: '44px' }}
             >
-              DISSINISH / RESUME TRIP
+              DISMISS / RESUME TRIP
             </button>
           </div>
         </div>

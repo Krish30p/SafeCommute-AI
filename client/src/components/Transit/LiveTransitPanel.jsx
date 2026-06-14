@@ -30,10 +30,7 @@ export default function LiveTransitPanel({ location }) {
   useEffect(() => {
     fetchTransit();
 
-    // Auto refresh every 30 seconds as requested
-    const interval = setInterval(fetchTransit, 30); // Wait, the instructions say "Use setInterval on the frontend every 30 seconds to refresh."
-    // 30 seconds is 30 * 1000 = 30000ms! The code should be 30000ms.
-    // Yes! Let's make sure it is 30000ms.
+    // Auto refresh every 30 seconds
     const refreshInterval = setInterval(fetchTransit, 30000);
 
     return () => clearInterval(refreshInterval);

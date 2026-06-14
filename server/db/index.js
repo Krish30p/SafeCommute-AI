@@ -30,6 +30,7 @@ let mockData = {
   trusted_contacts: [],
   trips: [],
   incidents: [],
+  transitStops: [],
   safety_scores_cache: []
 };
 
@@ -57,6 +58,14 @@ function saveMockData() {
 
 // Seed default user and contacts if mock DB is empty
 function seedMockDefaults() {
+  let modified = false;
+  if (!mockData.users) mockData.users = [];
+  if (!mockData.trusted_contacts) mockData.trusted_contacts = [];
+  if (!mockData.incidents) mockData.incidents = [];
+  if (!mockData.transitStops) mockData.transitStops = [];
+  if (!mockData.trips) mockData.trips = [];
+  if (!mockData.safety_scores_cache) mockData.safety_scores_cache = [];
+
   if (mockData.users.length === 0) {
     const defaultUser = {
       id: "d83fb22c-a0e1-45df-a337-b4d4de46cb51",
@@ -78,9 +87,59 @@ function seedMockDefaults() {
       name: "Rohan (Partner)",
       phone: "+919876543212"
     });
-    
-    saveMockData();
+    modified = true;
     console.log("✨ Seeded default user and trusted contacts in mock database.");
+  }
+
+  if (mockData.incidents.length === 0) {
+    const defaultIncidents = [
+      { lat: 22.3144, lng: 73.1932, type: 'dark_street', description: 'No streetlights near Sayajigunj underpass after 9pm' },
+      { lat: 22.3072, lng: 73.1812, type: 'harassment', description: 'Reported harassment near Railway Station auto stand' },
+      { lat: 22.2960, lng: 73.1723, type: 'broken_light', description: 'Streetlights out on Productivity Road stretch' },
+      { lat: 22.3201, lng: 73.1678, type: 'dark_street', description: 'Fatehgunj side lanes poorly lit' },
+      { lat: 22.3089, lng: 73.2001, type: 'suspicious', description: 'Isolated stretch near Sama road after 10pm' },
+      { lat: 22.2905, lng: 73.1820, type: 'harassment', description: 'Eve-teasing reported near Manjalpur sports complex' },
+      { lat: 22.3112, lng: 73.1590, type: 'broken_light', description: 'Dim lighting near Alkapuri main commercial street side lanes' },
+      { lat: 22.2985, lng: 73.1650, type: 'suspicious', description: 'Poorly patrolled road near Akota bridge underpass' },
+      { lat: 22.3245, lng: 73.1880, type: 'dark_street', description: 'Unlit stretch near Nizampura housing boards' },
+      { lat: 22.2850, lng: 73.1950, type: 'broken_light', description: 'Broken streetlights along Makarpura GIDC highway connector' }
+    ];
+    mockData.incidents = defaultIncidents.map(inc => ({
+      id: uuidv4(),
+      lat: inc.lat,
+      lng: inc.lng,
+      type: inc.type,
+      description: inc.description,
+      reported_at: new Date(Date.now() - Math.random() * 24 * 3600 * 1000).toISOString(),
+      weight: 1.0
+    }));
+    modified = true;
+    console.log("✨ Seeded default incidents in mock database.");
+  }
+
+  if (mockData.transitStops.length === 0) {
+    const defaultTransitStops = [
+      { name: 'Vadodara Railway Station', type: 'train', lat: 22.3072, lng: 73.1812, routes: ['Western Railway', 'Jan Shatabdi', 'Rajdhani'] },
+      { name: 'Alkapuri Bus Stop', type: 'bus', lat: 22.3144, lng: 73.1689, routes: ['47', '23', '8A'] },
+      { name: 'Akota Garden Stop', type: 'bus', lat: 22.2978, lng: 73.1723, routes: ['12', '31'] },
+      { name: 'Manjalpur Naka Bus Stop', type: 'bus', lat: 22.2900, lng: 73.1850, routes: ['15', '22A'] },
+      { name: 'Sayajigunj Metro Station', type: 'metro', lat: 22.3120, lng: 73.1900, routes: ['Metro Line 1'] },
+      { name: 'Fatehgunj Bus Stop', type: 'bus', lat: 22.3210, lng: 73.1790, routes: ['34', '10'] },
+      { name: 'Nizampura Metro Station', type: 'metro', lat: 22.3300, lng: 73.1850, routes: ['Metro Line 1'] },
+      { name: 'Gotri Road Stop', type: 'bus', lat: 22.3100, lng: 73.1450, routes: ['9A', '55'] },
+      { name: 'Akota Bridge Stop', type: 'bus', lat: 22.3000, lng: 73.1680, routes: ['12', '45'] },
+      { name: 'Vadodara Central Bus Terminal', type: 'bus', lat: 22.3090, lng: 73.1850, routes: ['Express', 'Intercity', 'Local'] }
+    ];
+    mockData.transitStops = defaultTransitStops.map(stop => ({
+      id: uuidv4(),
+      ...stop
+    }));
+    modified = true;
+    console.log("✨ Seeded default transit stops in mock database.");
+  }
+  
+  if (modified) {
+    saveMockData();
   }
 }
 
@@ -234,6 +293,9 @@ function runMockQuery(text, params = []) {
 
   // --- 8. INSERT INTO INCIDENTS ---
   if (lowerQuery.startsWith('insert into incidents')) {
+    const columnsMatch = query.match(/insert into incidents\s*\(([^)]+)\)/i);
+    const columns = columnsMatch ? columnsMatch[1].split(',').map(c => c.trim().toLowerCase()) : [];
+    
     const newIncident = {
       id: uuidv4(),
       lat: params[0],
@@ -241,8 +303,17 @@ function runMockQuery(text, params = []) {
       type: params[2],
       description: params[3],
       reported_at: new Date().toISOString(),
-      weight: params[4] || 1.0
+      weight: 1.0
     };
+
+    columns.forEach((col, idx) => {
+      if (col === 'reported_at') {
+        newIncident.reported_at = params[idx] instanceof Date ? params[idx].toISOString() : (params[idx] || newIncident.reported_at);
+      } else if (col === 'weight') {
+        newIncident.weight = typeof params[idx] === 'number' ? params[idx] : (Number(params[idx]) || 1.0);
+      }
+    });
+
     mockData.incidents.push(newIncident);
     saveMockData();
     return { rows: [newIncident] };
@@ -337,6 +408,7 @@ module.exports = {
       console.warn("⚠️ Postgres query error, switching to mock database fallback:", err.message);
       useMock = true;
       loadMockData();
+      seedMockDefaults();
       return runMockQuery(text, params);
     }
   },
