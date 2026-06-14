@@ -5,9 +5,9 @@ export default function TripShare({ shareUrl, handleCopy, copied }) {
   return (
     <div className="bg-darkCard p-4 rounded-xl border border-darkBorder space-y-3 animate-fade-in">
       <div className="space-y-1">
-        <h4 className="text-xs font-bold text-gray-200">Share Live Tracker</h4>
+        <h4 className="text-xs font-bold text-gray-200">Share Live Google Maps Location</h4>
         <p className="text-[11px] text-gray-500 font-medium">
-          Trusted contacts can view your real-time path, ETA, and safety logs on this map without authentication.
+          Copy this Google Maps link containing your current location coordinates to share with trusted contacts.
         </p>
       </div>
 

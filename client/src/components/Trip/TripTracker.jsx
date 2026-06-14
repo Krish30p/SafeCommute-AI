@@ -13,6 +13,7 @@ export default function TripTracker({
   const [copied, setCopied] = useState(false);
   const [smsLogs, setSmsLogs] = useState([]);
   const [showShare, setShowShare] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   // Listen to live SMS simulated notifications broadcasted by the server
   useEffect(() => {
@@ -46,13 +47,32 @@ export default function TripTracker({
   };
 
   const getShareUrl = () => {
-    return `${window.location.origin}/track/${trip.share_token}`;
+    if (userLocation && typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number') {
+      return `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+    }
+    return `https://www.google.com/maps?q=${trip.origin_lat},${trip.origin_lng}`;
   };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
+    setShowToast(true);
     setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleShareClick = () => {
+    // 1. Copy link immediately
+    navigator.clipboard.writeText(getShareUrl());
+    
+    // 2. Pop notification
+    setCopied(true);
+    setShowToast(true);
+    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setShowToast(false), 3000);
+    
+    // 3. Toggle drawer visibility
+    setShowShare(!showShare);
   };
 
   return (
@@ -67,7 +87,7 @@ export default function TripTracker({
           
           <div className="flex gap-2">
             <button
-              onClick={() => setShowShare(!showShare)}
+              onClick={handleShareClick}
               className="px-3 py-1.5 bg-darkBorder hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-lg flex items-center gap-1 border border-gray-700"
               style={{ minHeight: '32px' }}
             >
@@ -146,6 +166,19 @@ export default function TripTracker({
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+          <div className="bg-[#1A1F2E]/95 border border-safeGreen/40 px-4 py-2.5 rounded-xl text-xs font-bold text-safeGreen tracking-wide shadow-[0_4px_20px_rgba(29,158,117,0.2)] flex items-center gap-2 backdrop-blur-md">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-safeGreen opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-safeGreen"></span>
+            </span>
+            <span>📍 Google Maps live location link copied!</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
