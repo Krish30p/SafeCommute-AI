@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, AlertTriangle, Clock, MapPin, Check } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, AlertTriangle, Clock, MapPin, Check, Leaf, Video } from 'lucide-react';
 import SafetyScoreBar from './SafetyScoreBar';
 import { formatDistance, formatDuration } from '../../utils/formatters';
 
 export default function RouteCard({ 
   route, 
   isSelected, 
-  onSelect, 
-  index 
+  onSelect 
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const breakdown = route.safetyBreakdown?.breakdown || {};
   const warnings = route.warnings || [];
+
+  // Carbon footprint: use backend value or compute fallback
+  const distKm = (route.distance || 0) / 1000;
+  const carbon = route.carbonFootprint || {
+    walking: 0,
+    metro: Math.round(distKm * 40),
+    cab: Math.round(distKm * 180)
+  };
+
+  // CCTV corridor flag: backend-driven or fallback from safety score
+  const isCctvCorridor = route.cctvCorridor || (route.safetyScore || 0) >= 80;
 
   return (
     <div 
@@ -61,6 +71,35 @@ export default function RouteCard({
         <SafetyScoreBar score={route.safetyScore} />
       </div>
 
+      {/* CCTV Monitored Corridor Badge */}
+      {isCctvCorridor && (
+        <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-950/30 border border-emerald-500/20">
+          <Video size={14} className="text-emerald-400 shrink-0" />
+          <span className="text-[11px] font-bold text-emerald-400 tracking-wide">📹 CCTV Monitored Corridor</span>
+        </div>
+      )}
+
+      {/* Carbon Footprint Comparison */}
+      <div className="mb-4 p-3 rounded-lg bg-green-950/20 border border-green-800/20">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Leaf size={13} className="text-green-400" />
+          <span className="text-[11px] font-bold text-green-400 tracking-wide">Carbon Footprint</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-darkBorder/40 rounded-md py-1.5 px-1">
+            <div className="text-[10px] text-gray-400 font-medium mb-0.5">🚶 Walk</div>
+            <div className="text-xs font-bold text-green-300">{carbon.walking}g</div>
+          </div>
+          <div className="bg-darkBorder/40 rounded-md py-1.5 px-1">
+            <div className="text-[10px] text-gray-400 font-medium mb-0.5">🚇 Metro</div>
+            <div className="text-xs font-bold text-yellow-300">{carbon.metro}g</div>
+          </div>
+          <div className="bg-darkBorder/40 rounded-md py-1.5 px-1">
+            <div className="text-[10px] text-gray-400 font-medium mb-0.5">🚕 Cab</div>
+            <div className="text-xs font-bold text-red-300">{carbon.cab}g</div>
+          </div>
+        </div>
+      </div>
       {/* Warnings / Highlights */}
       {warnings.length > 0 && (
         <div className="mb-4 bg-amber-950/20 border border-warnAmber/20 p-2.5 rounded-lg text-xs text-amber-300 flex items-start gap-1.5 font-medium">

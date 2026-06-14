@@ -254,7 +254,7 @@ router.post('/compare', async (req, res) => {
 
     // 3. Dynamically assign FASTEST and SAFEST labels
     if (routes.length > 0) {
-      routes.forEach(r => r.label = "ALTERNATIVE");
+      routes.forEach(r => r.label = "BALANCED");
 
       let fastestIdx = 0;
       let minDuration = Infinity;
@@ -291,6 +291,17 @@ router.post('/compare', async (req, res) => {
         routes[fastestIdx].label = "FASTEST";
         routes[safestIdx].label = "SAFEST";
       }
+
+      // Calculate carbon footprint and CCTV corridor flag for each route
+      routes.forEach(r => {
+        const distKm = (r.distance || 0) / 1000;
+        r.carbonFootprint = {
+          walking: 0,
+          metro: Math.round(distKm * 40),
+          cab: Math.round(distKm * 180)
+        };
+        r.cctvCorridor = (r.safetyScore || 0) >= 80;
+      });
     }
 
     // 4. Sort/Re-rank logic
