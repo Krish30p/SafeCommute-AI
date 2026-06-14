@@ -13,31 +13,36 @@ const connectDB = async () => {
     process.exit(1);
   }
 
+  const startMemoryServer = async () => {
+    console.log('⚠️ Starting in-memory MongoDB...');
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      uri = mongoServer.getUri();
+      console.log(`✨ Started mongodb-memory-server at: ${uri}`);
+      await mongoose.connect(uri);
+      console.log('🔌 Connected to In-Memory MongoDB');
+    } catch (memErr) {
+      console.error('❌ Failed to start mongodb-memory-server:', memErr.message);
+      process.exit(1);
+    }
+  };
+
   if (uri.includes('127.0.0.1:27017') || uri.includes('localhost:27017')) {
     try {
       await mongoose.connect(uri, { serverSelectionTimeoutMS: 2000 });
       console.log('🔌 Connected to local MongoDB');
     } catch (err) {
-      console.log('⚠️ Local MongoDB not running. Starting in-memory MongoDB...');
-      try {
-        const { MongoMemoryServer } = require('mongodb-memory-server');
-        const mongoServer = await MongoMemoryServer.create();
-        uri = mongoServer.getUri();
-        console.log(`✨ Started mongodb-memory-server at: ${uri}`);
-        await mongoose.connect(uri);
-        console.log('🔌 Connected to In-Memory MongoDB');
-      } catch (memErr) {
-        console.error('❌ Failed to start mongodb-memory-server:', memErr.message);
-        process.exit(1);
-      }
+      console.log('⚠️ Local MongoDB not running.');
+      await startMemoryServer();
     }
   } else {
     try {
-      await mongoose.connect(uri);
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 4000 });
       console.log('🔌 Connected to MongoDB Atlas / Remote Cluster');
     } catch (err) {
-      console.error('❌ MongoDB connection error:', err.message);
-      process.exit(1);
+      console.error('❌ Remote MongoDB connection error:', err.message);
+      await startMemoryServer();
     }
   }
 };
