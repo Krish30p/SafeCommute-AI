@@ -206,20 +206,42 @@ router.post('/compare', async (req, res) => {
       const cached = await SafetyScoresCache.findOne({ route_hash: routeHash });
 
       let safety;
+      let aiAdvisory;
+
       if (cached) {
         safety = {
           score: cached.score,
           breakdown: cached.breakdown
         };
-      } else {
+        aiAdvisory = cached.ai_advisory;
+      }
+
+      if (!safety) {
         safety = await calculateSafetyScore(r.geometry.coordinates, {
           timeOfDay: now,
           womenSafetyMode: !!womenSafetyMode
         });
-        
+      }
+
+      if (!aiAdvisory) {
+        aiAdvisory = await getRiskPrediction(
+          {
+            originName: origin || "Origin",
+            destinationName: destination || "Destination",
+            distance: (r.distance / 1000).toFixed(1),
+            duration: Math.round(r.duration / 60)
+          },
+          safety,
+          now
+        );
+
         await SafetyScoresCache.findOneAndUpdate(
           { route_hash: routeHash },
-          { score: safety.score, breakdown: safety.breakdown },
+          { 
+            score: safety.score, 
+            breakdown: safety.breakdown,
+            ai_advisory: aiAdvisory
+          },
           { upsert: true, new: true }
         );
       }
@@ -227,17 +249,7 @@ router.post('/compare', async (req, res) => {
       r.safetyScore = safety.score;
       r.safetyBreakdown = safety;
       r.warnings = generateWarnings(safety);
-      
-      r.aiAdvisory = await getRiskPrediction(
-        {
-          originName: origin || "Origin",
-          destinationName: destination || "Destination",
-          distance: (r.distance / 1000).toFixed(1),
-          duration: Math.round(r.duration / 60)
-        },
-        safety,
-        now
-      );
+      r.aiAdvisory = aiAdvisory;
     }
 
     // 3. Dynamically assign FASTEST and SAFEST labels

@@ -84,6 +84,7 @@ const safetyScoresCacheSchema = new mongoose.Schema({
   route_hash: { type: String, required: true, unique: true },
   score: Number,
   breakdown: mongoose.Schema.Types.Mixed,
+  ai_advisory: String,
   cached_at: { type: Date, default: Date.now }
 });
 addVirtualId(safetyScoresCacheSchema);
