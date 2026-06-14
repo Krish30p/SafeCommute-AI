@@ -1,6 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+const mongoose = require('mongoose');
 const db = require('./index');
-const { v4: uuidv4 } = require('uuid');
 
 const incidents = [
   { lat: 22.3144, lng: 73.1932, type: 'dark_street', description: 'No streetlights near Sayajigunj underpass after 9pm' },
@@ -29,48 +29,65 @@ const transitStops = [
 ];
 
 async function seed() {
-  console.log(`🌱 Seeding SafeCommute AI database (Mode: ${db.getMode()})...`);
-  
-  if (db.getMode() === 'MOCK') {
-    const mock = db.getMockData();
-    // clear incidents and refill
-    mock.incidents = incidents.map(inc => ({
-      id: uuidv4(),
-      lat: inc.lat,
-      lng: inc.lng,
-      type: inc.type,
-      description: inc.description,
-      reported_at: new Date(Date.now() - Math.random() * 24 * 3600 * 1000).toISOString(), // random time in last 24h
-      weight: 1.0
-    }));
-    
-    // Save transitStops directly in the mock DB for easy loading (we can also write to a json file or keep them as static data)
-    mock.transitStops = transitStops.map(stop => ({
-      id: uuidv4(),
-      ...stop
-    }));
-    
-    db.saveMockData();
-    console.log(`✅ Successfully seeded mock DB with ${mock.incidents.length} incidents and ${mock.transitStops.length} transit stops!`);
-  } else {
-    try {
-      // Create tables first just in case
-      const schemaSql = require('fs').readFileSync(require('path').join(__dirname, 'schema.sql'), 'utf8');
-      await db.query(schemaSql);
-      
-      // Clear tables
-      await db.query('DELETE FROM incidents');
-      
-      for (const inc of incidents) {
-        await db.query(
-          'INSERT INTO incidents (lat, lng, type, description, reported_at) VALUES ($1, $2, $3, $4, $5)',
-          [inc.lat, inc.lng, inc.type, inc.description, new Date(Date.now() - Math.random() * 24 * 3600 * 1000)]
-        );
+  console.log('🌱 Seeding MongoDB database...');
+  try {
+    if (mongoose.connection.readyState === 0) {
+      if (!process.env.MONGODB_URI) {
+        throw new Error('MONGODB_URI is not set in environment variables');
       }
-      
-      console.log(`✅ Successfully seeded Postgres database with ${incidents.length} incidents.`);
-    } catch (err) {
-      console.error("❌ Seeding Postgres failed, fallback to mock DB seeding:", err.message);
+      await mongoose.connect(process.env.MONGODB_URI);
+      console.log('🔌 Connected to MongoDB for seeding');
+    }
+
+    // Clear existing collections
+    await db.User.deleteMany({});
+    await db.TrustedContact.deleteMany({});
+    await db.Incident.deleteMany({});
+    await db.SafetyScoresCache.deleteMany({});
+    await db.Trip.deleteMany({});
+
+    // Seed default user
+    const defaultUser = await db.User.create({
+      _id: "d83fb22c-a0e1-45df-a337-b4d4de46cb51",
+      name: "Aditi Sharma",
+      phone: "+919876543210",
+      created_at: new Date()
+    });
+
+    // Seed trusted contacts
+    await db.TrustedContact.create([
+      {
+        user_id: defaultUser._id,
+        name: "Mom",
+        phone: "+919876543211"
+      },
+      {
+        user_id: defaultUser._id,
+        name: "Rohan (Partner)",
+        phone: "+919876543212"
+      }
+    ]);
+
+    // Seed incidents
+    for (const inc of incidents) {
+      await db.Incident.create({
+        lat: inc.lat,
+        lng: inc.lng,
+        type: inc.type,
+        description: inc.description,
+        reported_at: new Date(Date.now() - Math.random() * 24 * 3600 * 1000),
+        weight: 1.0
+      });
+    }
+
+    console.log(`✅ Successfully seeded MongoDB database with default User, Trusted Contacts, and ${incidents.length} Incidents.`);
+  } catch (err) {
+    console.error("❌ Seeding MongoDB failed:", err.message);
+  } finally {
+    // If run as standalone script, close connection
+    if (require.main === module && mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+      console.log('🔌 Disconnected from MongoDB');
     }
   }
 }

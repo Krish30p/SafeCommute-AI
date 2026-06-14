@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const db = require('../db');
+const { SafetyScoresCache } = require('../db');
 const { calculateSafetyScore } = require('../services/safetyEngine');
 const { getRiskPrediction } = require('../services/claudeService');
 
@@ -168,16 +168,13 @@ router.post('/compare', async (req, res) => {
         .digest('hex');
 
       // Check Cache
-      const cacheQuery = await db.query(
-        'SELECT * FROM safety_scores_cache WHERE route_hash = $1',
-        [routeHash]
-      );
+      const cached = await SafetyScoresCache.findOne({ route_hash: routeHash });
 
       let safety;
-      if (cacheQuery.rows.length > 0) {
+      if (cached) {
         safety = {
-          score: cacheQuery.rows[0].score,
-          breakdown: cacheQuery.rows[0].breakdown
+          score: cached.score,
+          breakdown: cached.breakdown
         };
       } else {
         safety = await calculateSafetyScore(r.geometry.coordinates, {
@@ -186,9 +183,10 @@ router.post('/compare', async (req, res) => {
         });
         
         // Save to cache
-        await db.query(
-          'INSERT INTO safety_scores_cache (route_hash, score, breakdown) VALUES ($1, $2, $3)',
-          [routeHash, safety.score, JSON.stringify(safety.breakdown)]
+        await SafetyScoresCache.findOneAndUpdate(
+          { route_hash: routeHash },
+          { score: safety.score, breakdown: safety.breakdown },
+          { upsert: true, new: true }
         );
       }
 

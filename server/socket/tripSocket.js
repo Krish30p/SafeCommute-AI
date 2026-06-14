@@ -1,4 +1,4 @@
-const db = require('../db');
+const { Trip } = require('../db');
 
 function initTripSocket(io) {
   // Store active trip locations in-memory for fast tracking retrieval
@@ -48,9 +48,9 @@ function initTripSocket(io) {
       // Also write coordinates update to database if necessary (e.g. updating ETA)
       try {
         if (eta) {
-          await db.query(
-            'UPDATE trips SET eta = $1 WHERE share_token = $2',
-            [new Date(eta), token]
+          await Trip.findOneAndUpdate(
+            { share_token: token },
+            { eta: new Date(eta) }
           );
         }
       } catch (err) {

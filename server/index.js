@@ -3,6 +3,44 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
+const mongoose = require('mongoose');
+
+// Connect to MongoDB function with fallback to MongoMemoryServer
+const connectDB = async () => {
+  let uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error("❌ MONGODB_URI environment variable is missing!");
+    process.exit(1);
+  }
+
+  if (uri.includes('127.0.0.1:27017') || uri.includes('localhost:27017')) {
+    try {
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 2000 });
+      console.log('🔌 Connected to local MongoDB');
+    } catch (err) {
+      console.log('⚠️ Local MongoDB not running. Starting in-memory MongoDB...');
+      try {
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mongoServer = await MongoMemoryServer.create();
+        uri = mongoServer.getUri();
+        console.log(`✨ Started mongodb-memory-server at: ${uri}`);
+        await mongoose.connect(uri);
+        console.log('🔌 Connected to In-Memory MongoDB');
+      } catch (memErr) {
+        console.error('❌ Failed to start mongodb-memory-server:', memErr.message);
+        process.exit(1);
+      }
+    }
+  } else {
+    try {
+      await mongoose.connect(uri);
+      console.log('🔌 Connected to MongoDB Atlas / Remote Cluster');
+    } catch (err) {
+      console.error('❌ MongoDB connection error:', err.message);
+      process.exit(1);
+    }
+  }
+};
 
 const db = require('./db');
 const twilioService = require('./services/twilioService');
@@ -50,7 +88,7 @@ app.use('/api/transit', transitRouter);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
-    dbMode: db.getMode(),
+    dbMode: 'MONGODB',
     timestamp: new Date().toISOString()
   });
 });
@@ -59,15 +97,19 @@ const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, async () => {
   console.log(`🚀 SafeCommute AI backend listening on port ${PORT}`);
-  console.log(`🔌 Database Mode: ${db.getMode()}`);
   
-  // Auto-seed if mock mode is active to ensure instant data availability
-  if (db.getMode() === 'MOCK') {
-    try {
+  // Establish database connection
+  await connectDB();
+  
+  // Auto-seed if MongoDB is empty to ensure instant data availability
+  try {
+    const userCount = await db.User.countDocuments();
+    if (userCount === 0) {
+      console.log("🌱 MongoDB is empty. Seeding default data...");
       const { seed } = require('./db/seed');
       await seed();
-    } catch (e) {
-      console.error("⚠️ Failed to auto-seed mock database:", e.message);
     }
+  } catch (e) {
+    console.error("⚠️ Failed to auto-seed MongoDB database:", e.message);
   }
 });

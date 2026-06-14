@@ -1,7 +1,13 @@
-const axios = require('axios');
+const OpenAI = require('openai');
+
+// Initialize OpenAI client targeting Nvidia NIM
+const nvidia = new OpenAI({
+  apiKey: process.env.NVIDIA_API_KEY || 'dummy-key',
+  baseURL: 'https://integrate.api.nvidia.com/v1',
+});
 
 /**
- * Returns a safety risk advisory (2-3 sentences) using Claude or local rules.
+ * Returns a safety risk advisory (2-3 sentences) using Nvidia NIM or local rules.
  * @param {object} routeData { originName, destinationName, distance, duration }
  * @param {object} safetyBreakdown The object returned by calculateSafetyScore
  * @param {Date} currentTime Current timestamp
@@ -12,9 +18,9 @@ async function getRiskPrediction(routeData, safetyBreakdown, currentTime) {
                     hour >= 20 ? 'evening' :
                     hour >= 17 ? 'rush hour' : 'daytime';
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.NVIDIA_API_KEY;
 
-  if (!apiKey || apiKey.trim() === "") {
+  if (!apiKey || apiKey.trim() === "" || apiKey === 'nvapi-xxxxxxxxxxxx') {
     return getSimulatedRiskPrediction(routeData, safetyBreakdown, hour, timeLabel);
   }
 
@@ -40,22 +46,16 @@ Do not use bullet points. Write in plain conversational English.
 Start directly with the insight — no preamble like "Based on the data...".`;
 
   try {
-    const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: 'claude-3-5-sonnet-20241022',
+    const completion = await nvidia.chat.completions.create({
+      model: 'meta/llama-3.1-8b-instruct',
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: 150,
-      messages: [{ role: 'user', content: prompt }]
-    }, {
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-      },
-      timeout: 4000
+      temperature: 0.4,
     });
 
-    return response.data.content[0].text;
+    return completion.choices[0].message.content;
   } catch (err) {
-    console.warn("⚠️ Claude API request failed, falling back to simulator:", err.message);
+    console.warn("⚠️ Nvidia NIM request failed, falling back to simulator:", err.message);
     return getSimulatedRiskPrediction(routeData, safetyBreakdown, hour, timeLabel);
   }
 }
