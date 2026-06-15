@@ -31,7 +31,6 @@ async function fetchRealTransitFromMapbox(lat, lng, type, mapboxToken) {
       params: {
         access_token: mapboxToken,
         proximity: `${lng},${lat}`,
-        types: 'poi',
         limit: 5
       }
     });
@@ -95,10 +94,8 @@ router.get('/nearby', async (req, res) => {
         return { ...stop, distance };
       });
 
-      // Keep real stops that are within a reasonable distance (e.g. 50km)
-      const localRealStops = allRealStops.filter(s => s.distance < 50000);
-      if (localRealStops.length > 0) {
-        finalStops = localRealStops;
+      if (allRealStops.length > 0) {
+        finalStops = allRealStops;
       }
     }
 

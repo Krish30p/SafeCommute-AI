@@ -158,7 +158,7 @@ router.post('/start', async (req, res) => {
     res.json({
       success: true,
       trip: newTrip,
-      contactsAlerted: contacts.map(c => c.name)
+      contactsAlerted: alertContacts.map(c => c.name)
     });
 
   } catch (err) {
