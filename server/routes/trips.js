@@ -49,7 +49,7 @@ function scheduleCheckInAlerts(tripId, userId, destinationName, eta) {
         console.log(`🚨 ETA + 5 minutes expired without check-in. Alerting emergency contacts for trip ${tripId}!`);
         
         await twilioService.sendMissedCheckInAlert(
-          user ? user.name : "Aditi Sharma",
+          user ? user.name : "A SafeCommute User",
           destinationName,
           contacts.map(c => c.toObject())
         );
@@ -90,7 +90,9 @@ router.post('/start', async (req, res) => {
     destinationLat, destinationLng,
     originName, destinationName,
     selectedRoute, safetyScore,
-    durationSeconds
+    durationSeconds,
+    userName: reqUserName,
+    contacts: reqContacts
   } = req.body;
 
   try {
@@ -124,20 +126,30 @@ router.post('/start', async (req, res) => {
       share_token: shareToken
     });
 
-    // Get user and contacts details to trigger start SMS
-    const user = await User.findById(finalUserId);
-    const contacts = await TrustedContact.find({ user_id: finalUserId });
+    // Use Firebase Auth userName from frontend if available, otherwise fallback to MongoDB
+    let displayName = reqUserName;
+    if (!displayName) {
+      const user = await User.findById(finalUserId);
+      displayName = user ? user.name : "A SafeCommute User";
+    }
+
+    // Use Firestore contacts from frontend if available, otherwise fallback to MongoDB
+    let alertContacts = reqContacts;
+    if (!alertContacts || alertContacts.length === 0) {
+      const dbContacts = await TrustedContact.find({ user_id: finalUserId });
+      alertContacts = dbContacts.map(c => c.toObject());
+    }
 
     const etaStr = eta.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
     // Send SMS alerts (will fallback to socket logs if Twilio not configured)
     await twilioService.sendTripStartAlert(
-      user ? user.name : "Aditi Sharma",
+      displayName,
       originName,
       destinationName,
       etaStr,
       shareToken,
-      contacts.map(c => c.toObject())
+      alertContacts
     );
 
     // Schedule check-in jobs
@@ -213,7 +225,7 @@ router.get('/track/:token', async (req, res) => {
 
     res.json({
       trip,
-      userName: user ? user.name : "Aditi Sharma"
+      userName: user ? user.name : "A SafeCommute User"
     });
   } catch (err) {
     console.error("Error loading tracking trip:", err.message);
@@ -245,7 +257,7 @@ router.post('/:id/simulate-expiry', async (req, res) => {
 
     // Send missed check-in alert immediately
     await twilioService.sendMissedCheckInAlert(
-      user ? user.name : "Aditi Sharma",
+      user ? user.name : "A SafeCommute User",
       jobs.destinationName,
       contacts.map(c => c.toObject())
     );

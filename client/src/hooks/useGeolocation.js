@@ -13,27 +13,49 @@ export function useGeolocation() {
 
   // Load user's actual location initially if allowed
   useEffect(() => {
+    if (isSimulating) return;
+
     if (!navigator.geolocation) {
       setError("Geolocation not supported by browser");
+      // IP-based fallback
+      fetch('https://ipapi.co/json/')
+        .then(r => r.json())
+        .then(data => {
+          if (data.latitude && data.longitude) {
+            setLocation({ lat: data.latitude, lng: data.longitude });
+          }
+        })
+        .catch(() => {});
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    // Use watchPosition for continuous updates
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        // Only set if not currently in simulation mode
-        if (!isSimulating) {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        }
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setError(null);
       },
       (err) => {
-        console.warn("Geolocation permission denied, defaulting to Vadodara:", err.message);
+        console.warn("Geolocation error, trying IP fallback:", err.message);
         setError(err.message);
+        // IP-based fallback when browser geolocation fails
+        fetch('https://ipapi.co/json/')
+          .then(r => r.json())
+          .then(data => {
+            if (data.latitude && data.longitude) {
+              setLocation({ lat: data.latitude, lng: data.longitude });
+              setError(null);
+            }
+          })
+          .catch(() => {});
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [isSimulating]);
 
   // Start route traversal simulation
@@ -80,12 +102,45 @@ export function useGeolocation() {
     };
   }, []);
 
+  const refreshLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        setError("Geolocation not supported by browser");
+        reject(new Error("Geolocation not supported"));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (!isSimulating) {
+            const newLoc = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            setLocation(newLoc);
+            setError(null);
+            resolve(newLoc);
+          } else {
+            resolve(location);
+          }
+        },
+        (err) => {
+          console.warn("Geolocation permission denied or failed:", err.message);
+          setError(err.message);
+          reject(err);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  };
+
   return {
     location,
     error,
     isSimulating,
     startSimulation,
     stopSimulation,
+    refreshLocation,
     currentStepIndex: simulationIndexRef.current,
     totalSteps: simulationCoordsRef.current.length
   };

@@ -7,12 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        darkBg: "#0D1117",
-        darkCard: "#1A1F2E",
-        darkBorder: "#2D3748",
-        safeGreen: "#1D9E75",
-        warnAmber: "#F59E0B",
-        dangerRed: "#EF4444",
+        darkBg: "#F8F9FA",
+        darkCard: "#FFFFFF",
+        darkBorder: "#E8EAED",
+        safeGreen: "#188038",
+        warnAmber: "#F29900",
+        dangerRed: "#D93025",
+        googleBlue: "#1A73E8",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],

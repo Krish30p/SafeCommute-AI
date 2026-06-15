@@ -56,6 +56,8 @@ const tripsRouter = require('./routes/trips');
 const sosRouter = require('./routes/sos');
 const incidentsRouter = require('./routes/incidents');
 const transitRouter = require('./routes/transit');
+const forecastRouter = require('./routes/forecast');
+const contactsRouter = require('./routes/contacts');
 
 const app = express();
 const server = http.createServer(app);
@@ -88,6 +90,8 @@ app.use('/api/trips', tripsRouter);
 app.use('/api/sos', sosRouter);
 app.use('/api/incidents', incidentsRouter);
 app.use('/api/transit', transitRouter);
+app.use('/api/forecast', forecastRouter);
+app.use('/api/contacts', contactsRouter);
 
 // Health check and db mode check
 app.get('/api/health', (req, res) => {

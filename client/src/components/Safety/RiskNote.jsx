@@ -8,14 +8,14 @@ export default function RiskNote({ advisory, score }) {
   const scoreColorClass = getScoreTextColorClass(score);
 
   return (
-    <div className="bg-[#151b26] border border-blue-900/40 p-4 rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.05)] relative overflow-hidden">
+    <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-[0_4px_20px_rgba(26,115,232,0.05)] relative overflow-hidden">
       {/* Dynamic top gradient bar */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
       
       <div className="flex justify-between items-center mb-2.5">
         <div className="flex items-center gap-1.5">
-          <Sparkles className="text-blue-400 shrink-0 animate-pulse" size={15} />
-          <span className="text-[10px] font-black tracking-wider text-blue-400 uppercase">
+          <Sparkles className="text-blue-600 shrink-0 animate-pulse" size={15} />
+          <span className="text-[10px] font-black tracking-wider text-blue-600 uppercase">
             AI Safety Advisor
           </span>
         </div>
@@ -25,7 +25,7 @@ export default function RiskNote({ advisory, score }) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-300 leading-relaxed font-semibold">
+      <p className="text-xs text-gray-800 leading-relaxed font-semibold">
         {advisory}
       </p>
     </div>

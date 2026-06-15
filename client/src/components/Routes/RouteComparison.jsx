@@ -13,7 +13,7 @@ export default function RouteComparison({
 }) {
   if (routes.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 font-semibold bg-darkCard rounded-xl border border-darkBorder">
+      <div className="p-8 text-center text-gray-500 font-semibold bg-gray-50 rounded-xl border border-gray-200">
         No routes loaded. Enter origin and destination to calculate routes.
       </div>
     );
@@ -30,7 +30,7 @@ export default function RouteComparison({
             <Shield size={16} className="shrink-0" />
             <div>
               <p className="font-bold">🛡️ Women Safety Mode Active</p>
-              <p className="text-[11px] text-gray-300 font-medium">
+              <p className="text-[11px] text-green-800 font-medium">
                 {bannerMessage || "Routes re-ranked for maximum lighting, busy streets, and transit corridors."}
               </p>
             </div>

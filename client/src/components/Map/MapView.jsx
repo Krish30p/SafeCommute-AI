@@ -48,7 +48,8 @@ export default function MapView({
   routes = [], 
   selectedRouteIndex = 0,
   activeTrip = null,
-  onReportClick = null
+  onReportClick = null,
+  originCoords = null
 }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -66,8 +67,8 @@ export default function MapView({
     
     const mapInstance = new mapboxgl.Map({
       container: mapRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: VADODARA_CENTER,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: originCoords || VADODARA_CENTER,
       zoom: 13,
       pitch: 0
     });
@@ -228,20 +229,20 @@ export default function MapView({
               setActivePopup(null);
             }
           }}
-          className="px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-700/50 hover:bg-slate-800 text-gray-300 hover:text-white transition-all backdrop-blur-md flex items-center gap-2 text-xs font-semibold shadow-lg shadow-black/40 cursor-pointer animate-fade-in"
+          className="px-3 py-2 rounded-xl bg-white/90 border border-gray-200 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-all backdrop-blur-md flex items-center gap-2 text-xs font-semibold shadow-lg shadow-black/10 cursor-pointer animate-fade-in"
           title={showIncidents ? "Hide Safety Incidents" : "Show Safety Incidents"}
         >
-          {showIncidents ? <EyeOff size={14} className="text-red-400 animate-pulse" /> : <Eye size={14} className="text-safeGreen" />}
+          {showIncidents ? <EyeOff size={14} className="text-dangerRed animate-pulse" /> : <Eye size={14} className="text-googleBlue" />}
           <span>{showIncidents ? "Hide Incidents" : "Show Incidents"}</span>
         </button>
       </div>
 
       {isMockMap ? (
         // --- OFFLINE/SIMULATED GIS GRAPHIC ---
-        <div className="w-full h-full relative flex items-center justify-center select-none bg-[#090D14] border border-darkBorder">
+        <div className="w-full h-full relative flex items-center justify-center select-none bg-[#E8EAED] border border-darkBorder">
           
-          {/* Cyber grid lines */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(45,55,72,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(45,55,72,0.1)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+          {/* Grid lines */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.4)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.4)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
           {/* SVG Map Canvas */}
           <svg className="w-full h-full min-h-[500px]" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
@@ -252,7 +253,7 @@ export default function MapView({
                 <path
                   d={getSvgPath(st.coords, 800, 600)}
                   fill="none"
-                  stroke="#1E293B"
+                  stroke="#FFFFFF"
                   strokeWidth="8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -260,7 +261,7 @@ export default function MapView({
                 <path
                   d={getSvgPath(st.coords, 800, 600)}
                   fill="none"
-                  stroke="#334155"
+                  stroke="#F1F3F4"
                   strokeWidth="2"
                   strokeDasharray="4 6"
                   strokeLinecap="round"
@@ -319,8 +320,8 @@ export default function MapView({
               const { x, y } = projectCoords(userLocation.lng, userLocation.lat, 800, 600);
               return (
                 <g transform={`translate(${x}, ${y})`}>
-                  <circle r="14" fill="#3B82F6" opacity="0.3" className="animate-ping" />
-                  <circle r="7" fill="#3B82F6" stroke="#FFFFFF" strokeWidth="2" />
+                  <circle r="14" fill="#1A73E8" opacity="0.3" className="animate-ping" />
+                  <circle r="7" fill="#1A73E8" stroke="#FFFFFF" strokeWidth="2" />
                 </g>
               );
             })()}
@@ -331,19 +332,19 @@ export default function MapView({
             const { x, y } = projectCoords(activePopup.lng, activePopup.lat, 800, 600);
             return (
               <div 
-                className="absolute z-40 bg-[#1A1F2E] border border-darkBorder p-3 rounded-lg shadow-2xl max-w-xs text-sm"
+                className="absolute z-40 bg-white border border-gray-200 p-3 rounded-lg shadow-xl max-w-xs text-sm"
                 style={{ 
                   top: `${(y / 600) * 100 - 20}%`, 
                   left: `${(x / 800) * 100 - 10}%` 
                 }}
               >
-                <div className="flex justify-between items-center border-b border-darkBorder pb-1 mb-1">
-                  <span className="font-bold text-red-400 capitalize">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-1 mb-1">
+                  <span className="font-bold text-dangerRed capitalize">
                     {activePopup.type.replace('_', ' ')}
                   </span>
                   <button 
                     onClick={() => setActivePopup(null)}
-                    className="text-gray-400 hover:text-white font-bold px-1"
+                    className="text-gray-500 hover:text-gray-800 font-bold px-1"
                   >
                     ×
                   </button>

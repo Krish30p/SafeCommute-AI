@@ -32,8 +32,8 @@ export default function WomenSafetyToggle({ onChange }) {
       onClick={() => setEnabled(!enabled)}
       className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 ${
         enabled
-          ? 'bg-safeGreen/20 border-safeGreen text-safeGreen shadow-[0_0_12px_rgba(29,158,117,0.2)]'
-          : 'bg-darkCard border-darkBorder text-gray-400 hover:border-gray-500'
+          ? 'bg-safeGreen border-safeGreen text-white shadow-[0_0_12px_rgba(29,158,117,0.2)]'
+          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-300'
       }`}
       style={{ minHeight: '44px' }} // 44px tap target size minimum for mobile usability
       type="button"

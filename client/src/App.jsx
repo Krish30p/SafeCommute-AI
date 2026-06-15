@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useSocket } from './hooks/useSocket';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Home from './pages/Home';
 import RouteSelection from './pages/RouteSelection';
 import ActiveTrip from './pages/ActiveTrip';
 import PublicTracking from './pages/PublicTracking';
 import ReportIncident from './components/Incidents/ReportIncident';
+import AuthContainer from './pages/Auth/AuthContainer';
+import CustomCursor from './components/CustomCursor';
 import { Map as MapIcon, Navigation, AlertOctagon, HelpCircle } from 'lucide-react';
 
-export default function App() {
+function AppContent() {
+  const { currentUser } = useAuth();
   const [page, setPage] = useState('home'); // 'home' | 'routes' | 'navigation' | 'track'
   const [sharingToken, setSharingToken] = useState('');
   const [routesData, setRoutesData] = useState(null);
@@ -27,10 +31,15 @@ export default function App() {
   // Initialize Socket.io connection using proxy-friendly root relative path
   const socketClient = useSocket();
 
-  // 1. Fetch initial incident pins
-  const fetchIncidents = async () => {
+  // 1. Fetch initial incident pins based on location
+  const fetchIncidents = async (lat, lng) => {
     try {
-      const response = await axios.get('/api/incidents');
+      const params = {};
+      if (lat && lng) {
+        params.lat = lat;
+        params.lng = lng;
+      }
+      const response = await axios.get('/api/incidents', { params });
       setIncidents(response.data || []);
     } catch (err) {
       console.warn("Failed to fetch initial incidents:", err.message);
@@ -38,7 +47,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchIncidents();
+    if (geoTracker.location && geoTracker.location.lat) {
+      fetchIncidents(geoTracker.location.lat, geoTracker.location.lng);
+    } else {
+      fetchIncidents();
+    }
 
     // Check for sharing link on load
     const path = window.location.pathname;
@@ -49,13 +62,12 @@ export default function App() {
         setPage('track');
       }
     }
-  }, []);
+  }, [geoTracker.location?.lat, geoTracker.location?.lng]);
 
   // 2. Listen for socket real-time broadcasts
   useEffect(() => {
     if (!socketClient) return;
 
-    // Receive crowdsourced incident reports in real-time
     socketClient.on('new-incident', (newIncident) => {
       console.log("📢 Real-time incident pin received:", newIncident);
       setIncidents((prev) => [newIncident, ...prev]);
@@ -66,7 +78,6 @@ export default function App() {
     };
   }, [socketClient]);
 
-  // Update safety mode state
   const handleSafetyModeChange = (enabled) => {
     setWomenSafetyMode(enabled);
   };
@@ -74,6 +85,11 @@ export default function App() {
   const handleRoutesCalculated = (data) => {
     setRoutesData(data);
     setPage('routes');
+    if (data.routes && data.routes.length > 0) {
+      const coords = data.routes[0].geometry.coordinates;
+      const lastCoord = coords[coords.length - 1]; 
+      fetchIncidents(lastCoord[1], lastCoord[0]);
+    }
   };
 
   const handleTripStarted = (trip) => {
@@ -82,7 +98,6 @@ export default function App() {
   };
 
   const handleIncidentAdded = (newIncident) => {
-    // Local update fallback just in case socket is offline
     if (!incidents.some(i => i.id === newIncident.id)) {
       setIncidents((prev) => [newIncident, ...prev]);
     }
@@ -109,8 +124,13 @@ export default function App() {
     setPage('home');
   };
 
+  // Enforce Login
+  if (!currentUser) {
+    return <AuthContainer />;
+  }
+
   return (
-    <div className="w-full h-full flex flex-col bg-darkBg text-gray-100 select-none">
+    <div className="w-full h-full flex flex-col bg-darkBg text-gray-900 select-none">
       
       {/* Dynamic Content Frame */}
       <div className="flex-1 w-full overflow-hidden">
@@ -128,6 +148,7 @@ export default function App() {
             onRoutesCalculated={handleRoutesCalculated}
             womenSafetyMode={womenSafetyMode}
             onSafetyModeChange={handleSafetyModeChange}
+            onRefreshLocation={geoTracker.refreshLocation}
           />
         )}
 
@@ -157,26 +178,20 @@ export default function App() {
         )}
       </div>
 
-      {/* Bottom Navigation Bar - Standard layout rules: Map | Trip | Report */}
+      {/* Bottom Navigation Bar */}
       {page !== 'track' && (
-        <div className="bg-[#10141E] border-t border-darkBorder flex justify-around items-center px-2 py-2 select-none z-30">
+        <div className="bg-white border-t border-gray-200 flex justify-around items-center px-2 py-4 select-none z-30">
           
           <button
             onClick={() => {
-              if (page === 'navigation') {
-                // Keep on navigation
-              } else {
+              if (page !== 'navigation') {
                 setPage(routesData ? 'routes' : 'home');
               }
             }}
-            className={`flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer ${
-              page === 'home' || page === 'routes' 
-                ? 'text-safeGreen font-black' 
-                : 'text-gray-400 hover:text-white'
-            }`}
-            style={{ minHeight: '44px' }}
+            className={`flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer ${page === 'home' || page === 'routes' ? 'text-googleBlue font-black' : 'text-gray-500 hover:text-gray-900'}`}
+            style={{ minHeight: '60px' }}
           >
-            <MapIcon size={18} />
+            <MapIcon size={24} />
             <span className="text-[10px] font-bold">Map</span>
           </button>
 
@@ -189,28 +204,27 @@ export default function App() {
               }
             }}
             className={`flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer ${
-              page === 'navigation' 
-                ? 'text-safeGreen font-black' 
-                : 'text-gray-400 hover:text-white'
+                page === 'navigation' 
+                  ? 'text-googleBlue font-black' 
+                  : 'text-gray-500 hover:text-gray-900'
             }`}
-            style={{ minHeight: '44px' }}
+            style={{ minHeight: '60px' }}
           >
-            <Navigation size={18} />
+            <Navigation size={24} />
             <span className="text-[10px] font-bold">Trip</span>
           </button>
 
           <button
             onClick={() => setShowReportModal(true)}
-            className="flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-gray-400 hover:text-white transition-colors cursor-pointer"
-            style={{ minHeight: '44px' }}
+            className="flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+            style={{ minHeight: '60px' }}
           >
-            <AlertOctagon size={18} className="text-dangerRed" />
+            <AlertOctagon size={24} className="text-dangerRed" />
             <span className="text-[10px] font-bold">Report</span>
           </button>
         </div>
       )}
 
-      {/* Incident reporting modal triggered from bottom navigation */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end">
           <div className="w-full max-w-md mx-auto">
@@ -219,7 +233,6 @@ export default function App() {
               onClose={() => setShowReportModal(false)}
               onReportSuccess={(newInc) => {
                 handleIncidentAdded(newInc);
-                // Dispatch incident to websocket server so other clients load it instantly
                 if (socketClient) {
                   socketClient.emit('update-location', {
                     token: 'new-incident-trigger',
@@ -233,5 +246,14 @@ export default function App() {
       )}
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <CustomCursor />
+      <AppContent />
+    </AuthProvider>
   );
 }

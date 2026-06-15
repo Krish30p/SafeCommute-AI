@@ -40,15 +40,15 @@ export default function LiveTransitPanel({ location }) {
   const filteredData = transitData.filter(item => item.type === activeTab);
 
   return (
-    <div className="glass-panel p-4 rounded-xl border border-darkBorder flex flex-col space-y-3">
+    <div className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col space-y-3 shadow-sm">
       <div className="flex justify-between items-center">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-1.5">
           <Milestone size={14} className="text-safeGreen" /> Nearby Live Transit
         </h3>
         <button 
           onClick={fetchTransit} 
           disabled={loading}
-          className="text-gray-400 hover:text-white flex items-center gap-1 text-[10px] font-bold"
+          className="text-gray-500 hover:text-gray-800 flex items-center gap-1 text-[10px] font-bold"
         >
           <RefreshCw size={11} className={`${loading ? 'animate-spin' : ''}`} />
           {lastRefreshed.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -56,15 +56,15 @@ export default function LiveTransitPanel({ location }) {
       </div>
 
       {/* Tabs selectors */}
-      <div className="flex bg-darkBg/60 p-0.5 rounded-lg border border-darkBorder">
+      <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
         {['bus', 'metro', 'train'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-1.5 rounded-md text-xs font-bold capitalize transition-colors ${
               activeTab === tab 
-                ? 'bg-darkCard border border-darkBorder text-safeGreen font-black' 
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white border border-gray-200 text-googleBlue font-black shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
             }`}
             style={{ minHeight: '36px' }}
           >
@@ -83,14 +83,14 @@ export default function LiveTransitPanel({ location }) {
           filteredData.map((item) => (
             <div 
               key={item.id} 
-              className="bg-darkBg/40 border border-darkBorder/40 p-2.5 rounded-lg flex justify-between items-center text-xs"
+              className="bg-gray-50 border border-gray-200 p-2.5 rounded-lg flex justify-between items-center text-xs"
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">
                   {item.type === 'bus' ? '🚌' : item.type === 'metro' ? '🚇' : '🚆'}
                 </span>
                 <div>
-                  <div className="font-bold text-gray-200">{item.name}</div>
+                  <div className="font-bold text-gray-800">{item.name}</div>
                   <div className="text-[10px] text-gray-500 font-bold">🚶 {item.distance}m away</div>
                 </div>
               </div>

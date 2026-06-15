@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, MapPin, ShieldAlert, Sparkles, Navigation } from 'lucide-react';
+import { Search, MapPin, ShieldAlert, Sparkles, Navigation, ShieldCheck, LogOut } from 'lucide-react';
 import MapView from '../components/Map/MapView';
 import WomenSafetyToggle from '../components/Safety/WomenSafetyToggle';
+import EmergencyContacts from '../components/Safety/EmergencyContacts';
+import { useAuth } from '../contexts/AuthContext';
 
 // Pre-seeded locations for autocomplete fallbacks
 const MOCK_LOCATIONS = [
@@ -10,7 +12,12 @@ const MOCK_LOCATIONS = [
   { name: "Akota Garden Stop", coords: [73.1723, 22.2960] },
   { name: "Alkapuri Bus Stop", coords: [73.1689, 22.3144] },
   { name: "Fatehgunj Bus Stop", coords: [73.1790, 22.3210] },
-  { name: "Manjalpur Naka Stop", coords: [73.1850, 22.2900] }
+  { name: "Manjalpur Naka Stop", coords: [73.1850, 22.2900] },
+  { name: "Sayajibaug Zoo Entrance", coords: [73.1885, 22.3150] },
+  { name: "Kirti Mandir", coords: [73.1901, 22.3061] },
+  { name: "Sursagar Lake", coords: [73.2001, 22.2995] },
+  { name: "Laxmi Vilas Palace Gate", coords: [73.1923, 22.2945] },
+  { name: "MSU Baroda Campus", coords: [73.1840, 22.3100] }
 ];
 
 export default function Home({ 
@@ -18,8 +25,10 @@ export default function Home({
   incidents, 
   onRoutesCalculated, 
   womenSafetyMode, 
-  onSafetyModeChange 
+  onSafetyModeChange,
+  onRefreshLocation
 }) {
+  const { currentUser, logout } = useAuth();
   const [origin, setOrigin] = useState("Vadodara Railway Station");
   const [originCoords, setOriginCoords] = useState([73.1812, 22.3072]);
   const [destination, setDestination] = useState("Akota Garden Stop");
@@ -28,6 +37,15 @@ export default function Home({
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  // Sync origin with exact current location when userLocation updates
+  useEffect(() => {
+    if (userLocation && userLocation.lat && userLocation.lng) {
+      setOrigin("Current Location");
+      setOriginCoords([userLocation.lng, userLocation.lat]);
+    }
+  }, [userLocation]);
+
 
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -53,9 +71,10 @@ export default function Home({
       const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`, {
         params: {
           access_token: mapboxToken,
-          proximity: '73.1812,22.3072',
+          proximity: userLocation && userLocation.lng ? `${userLocation.lng},${userLocation.lat}` : '73.1812,22.3072',
           country: 'IN',
-          types: 'poi,address,neighborhood,place'
+          types: 'poi,address,neighborhood,place',
+          limit: 10
         }
       });
       const places = response.data.features.map(f => ({
@@ -83,7 +102,10 @@ export default function Home({
         destinationCoords,
         womenSafetyMode
       });
-      onRoutesCalculated(response.data);
+      const data = response.data;
+      data.originName = origin;
+      data.destinationName = destination;
+      onRoutesCalculated(data);
     } catch (err) {
       console.error("Route calculation error:", err.message);
       
@@ -93,6 +115,8 @@ export default function Home({
       const distance = isDemo ? 4200 : 3500;
       
       const mockResult = {
+        originName: origin,
+        destinationName: destination,
         routes: [
           {
             name: "Route A",
@@ -159,13 +183,32 @@ export default function Home({
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* Search overlay panel */}
-      <div className="absolute top-4 left-4 right-4 z-20 glass-panel p-4 rounded-2xl shadow-xl flex flex-col gap-3 max-w-md md:left-6">
-        <div className="flex items-center justify-between pb-1 border-b border-darkBorder/40">
+      <div className="absolute top-4 left-4 right-4 z-20 glass-panel p-4 rounded-2xl shadow-lg flex flex-col gap-3 max-w-md md:left-6">
+        <div className="flex items-center justify-between pb-1 border-b border-gray-200">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="text-safeGreen animate-pulse" size={16} />
-            <h1 className="text-xs font-black tracking-widest text-white uppercase">SafeCommute AI Route Selection</h1>
+            <Sparkles className="text-googleBlue animate-pulse" size={16} />
+            <h1 className="text-xs font-black tracking-widest text-gray-800 uppercase">SafeCommute AI</h1>
           </div>
-          <span className="text-[10px] text-gray-500 font-bold">Vadodara, GJ</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 truncate max-w-[80px]">
+              {currentUser?.displayName || currentUser?.email?.split('@')[0]}
+            </span>
+            <button
+              onClick={() => setShowContacts(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-googleBlue/10 hover:bg-googleBlue/20 text-googleBlue transition-colors cursor-pointer"
+              title="Manage Emergency Contacts"
+            >
+              <ShieldCheck size={13} />
+              <span className="text-[10px] font-bold hidden sm:inline">Contacts</span>
+            </button>
+            <button
+              onClick={logout}
+              className="flex items-center justify-center p-1.5 rounded-lg text-gray-400 hover:text-dangerRed hover:bg-red-50 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Inputs */}
@@ -182,10 +225,27 @@ export default function Home({
               value={origin}
               placeholder="Search Starting point..."
               onChange={(e) => handleQueryChange(e.target.value, setOrigin, setOriginCoords, setOriginSuggestions)}
-              className="w-full bg-darkBg text-xs text-gray-100 pl-10 pr-4 py-3 rounded-xl border border-darkBorder focus:border-gray-500 focus:outline-none placeholder-gray-600 font-semibold"
+              className="w-full bg-white text-xs text-gray-900 pl-10 pr-10 py-3 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
             />
+            {/* Live Location Pickup Button */}
+            <button 
+              onClick={async () => {
+                try {
+                  const loc = await onRefreshLocation();
+                  setOrigin("Current Location");
+                  setOriginCoords([loc.lng, loc.lat]);
+                  setOriginSuggestions([]);
+                } catch (err) {
+                  alert("Live location could not be fetched. Check browser permissions.");
+                }
+              }}
+              className="absolute inset-y-0 right-3 flex items-center text-googleBlue hover:text-blue-700 cursor-pointer"
+              title="Use current location"
+            >
+              <Navigation size={16} className="transform -rotate-45" />
+            </button>
             {originSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-darkCard border border-darkBorder rounded-xl shadow-2xl z-30 max-h-48 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
                 {originSuggestions.map((loc, i) => (
                   <button
                     key={i}
@@ -194,9 +254,9 @@ export default function Home({
                       setOriginCoords(loc.coords);
                       setOriginSuggestions([]);
                     }}
-                    className="w-full p-3 text-left text-xs font-bold text-gray-300 hover:bg-darkBorder transition-colors border-b border-darkBorder/30 last:border-b-0 flex items-center gap-2"
+                    className="w-full p-3 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
                   >
-                    <MapPin size={12} className="text-gray-500" /> {loc.name}
+                    <MapPin size={12} className="text-gray-400" /> {loc.name}
                   </button>
                 ))}
               </div>
@@ -214,10 +274,10 @@ export default function Home({
               value={destination}
               placeholder="Search Destination..."
               onChange={(e) => handleQueryChange(e.target.value, setDestination, setDestinationCoords, setDestSuggestions)}
-              className="w-full bg-darkBg text-xs text-gray-100 pl-10 pr-4 py-3 rounded-xl border border-darkBorder focus:border-gray-500 focus:outline-none placeholder-gray-600 font-semibold"
+              className="w-full bg-white text-xs text-gray-900 pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
             />
             {destSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-darkCard border border-darkBorder rounded-xl shadow-2xl z-30 max-h-48 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
                 {destSuggestions.map((loc, i) => (
                   <button
                     key={i}
@@ -226,9 +286,9 @@ export default function Home({
                       setDestinationCoords(loc.coords);
                       setDestSuggestions([]);
                     }}
-                    className="w-full p-3 text-left text-xs font-bold text-gray-300 hover:bg-darkBorder transition-colors border-b border-darkBorder/30 last:border-b-0 flex items-center gap-2"
+                    className="w-full p-3 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
                   >
-                    <MapPin size={12} className="text-gray-500" /> {loc.name}
+                    <MapPin size={12} className="text-gray-400" /> {loc.name}
                   </button>
                 ))}
               </div>
@@ -243,7 +303,7 @@ export default function Home({
           <button
             onClick={handleSearchRoutes}
             disabled={loading}
-            className="flex-1 py-2.5 bg-safeGreen hover:bg-safeGreen/90 text-white rounded-full text-xs font-extrabold tracking-wide transition-all shadow-md shadow-safeGreen/20 flex items-center justify-center gap-1"
+            className="flex-1 py-2.5 bg-googleBlue hover:bg-blue-600 text-white rounded-full text-xs font-extrabold tracking-wide transition-all shadow-md flex items-center justify-center gap-1"
             style={{ minHeight: '44px' }}
             id="find-routes-button"
           >
@@ -257,8 +317,14 @@ export default function Home({
         <MapView 
           userLocation={userLocation} 
           incidents={incidents} 
+          originCoords={originCoords}
         />
       </div>
+
+      {/* Emergency Contacts Modal */}
+      {showContacts && (
+        <EmergencyContacts onClose={() => setShowContacts(false)} />
+      )}
     </div>
   );
 }

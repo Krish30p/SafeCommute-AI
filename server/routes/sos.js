@@ -5,25 +5,15 @@ const twilioService = require('../services/twilioService');
 
 // POST /api/sos - Trigger emergency SOS alert
 router.post('/', async (req, res) => {
-  const { lat, lng, tripId } = req.body;
+  const { lat, lng, tripId, contacts, userName } = req.body;
 
   if (!lat || !lng) {
     return res.status(400).json({ error: "Missing current GPS coordinates for SOS alert" });
   }
 
   try {
-    // Determine active user (fallback to first user)
-    const user = await User.findOne();
-
-    if (!user) {
-      return res.status(404).json({ error: "No user found to associate SOS with" });
-    }
-
-    // Get trusted contacts
-    const contacts = await TrustedContact.find({ user_id: user._id });
-
-    if (contacts.length === 0) {
-      return res.status(400).json({ error: "No emergency contacts configured for this user" });
+    if (!contacts || contacts.length === 0) {
+      return res.status(400).json({ error: "No emergency contacts provided in request." });
     }
 
     // Fetch trip information if available
@@ -35,11 +25,13 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Trigger Twilio SOS broadcast
+    // Trigger Twilio SOS broadcast using the name provided by the frontend
+    const displayName = userName || "A SafeCommute User";
+    
     const alerts = await twilioService.sendSOSAlert(
-      user.name,
+      displayName,
       { lat, lng },
-      contacts.map(c => c.toObject()),
+      contacts,
       tripData
     );
 

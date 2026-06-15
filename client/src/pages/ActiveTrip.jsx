@@ -73,7 +73,7 @@ export default function ActiveTrip({
             className={`px-4 py-2.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg border transition-all cursor-pointer ${
               isSimulatingCoords
                 ? 'bg-safeGreen border-safeGreen text-white'
-                : 'bg-darkCard/90 border-darkBorder hover:border-gray-500 text-gray-200'
+                : 'bg-white/90 border-gray-200 hover:border-gray-300 text-gray-800'
             }`}
             style={{ minHeight: '44px' }}
           >
@@ -84,7 +84,7 @@ export default function ActiveTrip({
 
         {/* Floating Emergency SMS Logs Indicator */}
         <div className="absolute top-4 right-4 z-20 pointer-events-none">
-          <div className="bg-[#1A1F2E]/90 border border-darkBorder px-3 py-1.5 rounded-lg text-[9px] font-bold text-gray-400 tracking-wider shadow-lg flex items-center gap-1">
+          <div className="bg-white/90 border border-gray-200 px-3 py-1.5 rounded-lg text-[9px] font-bold text-gray-700 tracking-wider shadow-md flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
             <span>SOS RADAR ONLINE</span>
           </div>
@@ -92,12 +92,12 @@ export default function ActiveTrip({
       </div>
 
       {/* 2. Controls & Widgets Panel */}
-      <div className="w-full h-3/5 md:w-1/2 md:h-full bg-darkBg border-t md:border-t-0 md:border-r border-darkBorder p-4 md:p-6 overflow-y-auto order-2 md:order-1 flex flex-col gap-4 select-none scrollbar-thin">
+      <div className="w-full h-3/5 md:w-1/2 md:h-full bg-white border-t md:border-t-0 md:border-r border-gray-200 p-4 md:p-6 overflow-y-auto order-2 md:order-1 flex flex-col gap-4 select-none scrollbar-thin">
         
         {/* Header summary */}
-        <div className="flex justify-between items-center pb-2 border-b border-darkBorder/40">
+        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
           <div>
-            <h2 className="text-sm font-black text-white uppercase tracking-wider">Navigation Dashboard</h2>
+            <h2 className="text-sm font-black text-gray-900 uppercase tracking-wider">Navigation Dashboard</h2>
             <p className="text-[11px] text-gray-500 font-bold">Monitor your safety parameters and transit links</p>
           </div>
 
