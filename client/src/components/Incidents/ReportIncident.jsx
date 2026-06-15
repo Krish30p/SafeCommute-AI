@@ -3,11 +3,11 @@ import axios from 'axios';
 import { AlertOctagon, X, MapPin } from 'lucide-react';
 
 const INCIDENT_TYPES = [
-  { id: 'harassment', label: '⚠️ Harassment / Eve-teasing', color: 'text-dangerRed bg-dangerRed/10 border-dangerRed/30' },
-  { id: 'dark_street', label: '🌑 Dark Street / Poor Lights', color: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
-  { id: 'broken_light', label: '💡 Broken Streetlight', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
-  { id: 'suspicious', label: '👤 Suspicious Activity', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' },
-  { id: 'other', label: '❓ Other Danger concern', color: 'text-gray-400 bg-gray-400/10 border-gray-400/30' }
+  { id: 'harassment', label: '⚠️ Harassment / Eve-teasing', color: 'text-dangerRed bg-red-50 border-red-200' },
+  { id: 'dark_street', label: '🌑 Dark Street / Poor Lights', color: 'text-orange-700 bg-orange-50 border-orange-200' },
+  { id: 'broken_light', label: '💡 Broken Streetlight', color: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  { id: 'suspicious', label: '👤 Suspicious Activity', color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  { id: 'other', label: '❓ Other Danger concern', color: 'text-gray-700 bg-gray-50 border-gray-200' }
 ];
 
 export default function ReportIncident({ 
@@ -59,14 +59,14 @@ export default function ReportIncident({
   };
 
   return (
-    <div className="glass-panel p-5 rounded-t-2xl border-t-safeGreen shadow-[0_-5px_25px_rgba(0,0,0,0.4)] space-y-4 animate-slide-up w-full">
-      <div className="flex justify-between items-center pb-2 border-b border-darkBorder/60">
-        <h3 className="text-sm font-black text-white flex items-center gap-1.5 uppercase tracking-wider">
+    <div className="glass-panel p-5 rounded-2xl border-t-4 border-t-safeGreen shadow-[0_10px_40px_rgba(0,0,0,0.15)] space-y-4 animate-fade-in w-full text-gray-800">
+      <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+        <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5 uppercase tracking-wider">
           <AlertOctagon size={16} className="text-dangerRed animate-bounce" /> Report Unsafe Area
         </h3>
         <button 
           onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-darkBorder transition-colors"
+          className="text-gray-400 hover:text-gray-800 p-1 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <X size={16} />
         </button>
@@ -75,7 +75,7 @@ export default function ReportIncident({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Incident Type Selector */}
         <div className="space-y-2">
-          <label className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest block">Select Category</label>
+          <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-widest block">Select Category</label>
           <div className="grid grid-cols-2 gap-2">
             {INCIDENT_TYPES.map((t) => (
               <button
@@ -84,8 +84,8 @@ export default function ReportIncident({
                 onClick={() => setType(t.id)}
                 className={`p-2.5 rounded-lg border text-left text-xs font-bold transition-all duration-200 ${
                   type === t.id 
-                    ? t.color + ' ring-1 ring-offset-0 ring-white/20 scale-[1.02]' 
-                    : 'bg-darkBg border-darkBorder text-gray-400 hover:border-gray-500'
+                    ? t.color + ' ring-1 ring-offset-0 ring-googleBlue/20 scale-[1.02]' 
+                    : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300'
                 }`}
                 style={{ minHeight: '44px' }}
               >
@@ -96,30 +96,30 @@ export default function ReportIncident({
         </div>
 
         {/* Pin Location Coordinates Display */}
-        <div className="bg-darkBg/60 p-3 rounded-lg border border-darkBorder space-y-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-600 uppercase tracking-widest">
             <MapPin size={12} className="text-safeGreen" /> Location Coordinates
           </div>
           
-          <div className="grid grid-cols-2 gap-2 text-xs font-mono font-bold text-gray-300">
+          <div className="grid grid-cols-2 gap-2 text-xs font-mono font-bold text-gray-800">
             <div>
-              <span className="text-[10px] text-gray-600 block">Latitude</span>
+              <span className="text-[10px] text-gray-500 block font-sans">Latitude</span>
               <input 
                 type="number" 
                 step="0.000001" 
                 value={customLat} 
                 onChange={(e) => setCustomLat(e.target.value)}
-                className="w-full bg-transparent border-b border-darkBorder focus:border-safeGreen outline-none py-0.5 text-gray-300 font-bold"
+                className="w-full bg-transparent border-b border-gray-200 focus:border-safeGreen outline-none py-0.5 text-gray-800 font-bold"
               />
             </div>
             <div>
-              <span className="text-[10px] text-gray-600 block">Longitude</span>
+              <span className="text-[10px] text-gray-500 block font-sans">Longitude</span>
               <input 
                 type="number" 
                 step="0.000001" 
                 value={customLng} 
                 onChange={(e) => setCustomLng(e.target.value)}
-                className="w-full bg-transparent border-b border-darkBorder focus:border-safeGreen outline-none py-0.5 text-gray-300 font-bold"
+                className="w-full bg-transparent border-b border-gray-200 focus:border-safeGreen outline-none py-0.5 text-gray-800 font-bold"
               />
             </div>
           </div>
@@ -130,13 +130,13 @@ export default function ReportIncident({
 
         {/* Description Field */}
         <div className="space-y-1.5">
-          <label className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest block">Description Details</label>
+          <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-widest block">Description Details</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe the hazard (e.g. no working streetlights, dark alleyway, isolated path...)"
             rows={2.5}
-            className="w-full bg-darkBg text-xs text-gray-200 p-3 rounded-lg border border-darkBorder focus:border-gray-500 focus:outline-none placeholder-gray-600 font-semibold"
+            className="w-full bg-gray-50 text-xs text-gray-800 p-3 rounded-lg border border-gray-200 focus:border-gray-400 focus:outline-none placeholder-gray-400 font-semibold"
           />
         </div>
 

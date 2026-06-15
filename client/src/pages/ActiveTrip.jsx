@@ -125,10 +125,10 @@ export default function ActiveTrip({
       {/* SOS Button Component overlay */}
       <SOSButton location={userLocation} tripId={trip.id} />
 
-      {/* Report Incident Bottom sheet overlay */}
+      {/* Report Incident Modal overlay */}
       {showReportSheet && (
-        <div className="absolute inset-0 bg-black/60 z-50 flex items-end">
-          <div className="w-full max-w-md mx-auto">
+        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
             <ReportIncident
               location={userLocation}
               onClose={() => setShowReportSheet(false)}

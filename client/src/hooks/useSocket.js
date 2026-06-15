@@ -15,7 +15,7 @@ export function useSocket(baseUrl) {
     const socketUrl = baseUrl || window.location.origin;
     console.log(`🔌 Initializing socket connection to: ${socketUrl}`);
     const socketInstance = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       autoConnect: true
     });
     

@@ -11,6 +11,7 @@ export default function TripTracker({
   onTripEnd 
 }) {
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState('');
   const [smsLogs, setSmsLogs] = useState([]);
   const [showShare, setShowShare] = useState(false);
 
@@ -45,14 +46,20 @@ export default function TripTracker({
     }
   };
 
-  const getShareUrl = () => {
-    return `${window.location.origin}/track/${trip.share_token}`;
+  const getGoogleMapsUrl = () => {
+    const lat = userLocation?.lat || 22.3072;
+    const lng = userLocation?.lng || 73.1812;
+    return `https://www.google.com/maps?q=${lat},${lng}`;
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(getShareUrl());
+    navigator.clipboard.writeText(getGoogleMapsUrl());
+    setToast('Link has been copied to your clipboard!');
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => {
+      setToast('');
+      setCopied(false);
+    }, 3000);
   };
 
   return (
@@ -67,7 +74,10 @@ export default function TripTracker({
           
           <div className="flex gap-2">
             <button
-              onClick={() => setShowShare(!showShare)}
+              onClick={() => {
+                handleCopyLink();
+                setShowShare(!showShare);
+              }}
               className="px-3 py-1.5 bg-gray-50 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg flex items-center gap-1 border border-gray-200"
               style={{ minHeight: '32px' }}
             >
@@ -108,7 +118,7 @@ export default function TripTracker({
 
       {/* Share Link Overlay Drawer */}
       {showShare && (
-        <TripShare shareUrl={getShareUrl()} handleCopy={handleCopyLink} copied={copied} />
+        <TripShare shareUrl={getGoogleMapsUrl()} handleCopy={handleCopyLink} copied={copied} />
       )}
 
       {/* 2. Check-in Timer Widget */}
@@ -146,6 +156,12 @@ export default function TripTracker({
           )}
         </div>
       </div>
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900/90 backdrop-blur-md text-white text-xs font-bold px-4 py-3 rounded-xl shadow-xl z-50 flex items-center gap-2 border border-white/10 animate-fade-in">
+          <CheckCircle className="text-safeGreen" size={16} />
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

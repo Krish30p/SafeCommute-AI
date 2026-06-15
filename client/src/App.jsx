@@ -226,8 +226,8 @@ function AppContent() {
       )}
 
       {showReportModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end">
-          <div className="w-full max-w-md mx-auto">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
             <ReportIncident
               location={geoTracker.location}
               onClose={() => setShowReportModal(false)}
