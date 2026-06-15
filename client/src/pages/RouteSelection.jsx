@@ -101,7 +101,37 @@ export default function RouteSelection({
       // Reset selected route index
       setSelectedRouteIndex(0);
     } catch (e) {
-      console.warn("Failed to update safety weights on re-ranking:", e.message);
+      console.warn("Failed to update safety weights on re-ranking, fallback to local sort:", e.message);
+      if (routesData && routesData.routes) {
+        const sortedRoutes = [...routesData.routes];
+        if (newVal) {
+          // Rank by safetyScore descending
+          sortedRoutes.sort((a, b) => b.safetyScore - a.safetyScore);
+        } else {
+          // Rank by duration ascending
+          sortedRoutes.sort((a, b) => a.duration - b.duration);
+        }
+        
+        // Find fastest and safest to calculate delta if newVal is true
+        const fastestRoute = [...routesData.routes].sort((a, b) => a.duration - b.duration)[0];
+        const safestRoute = [...routesData.routes].sort((a, b) => b.safetyScore - a.safetyScore)[0];
+        const timeDeltaMinutes = Math.max(0, Math.round((safestRoute.duration - fastestRoute.duration) / 60));
+
+        const updatedData = {
+          ...routesData,
+          routes: sortedRoutes,
+          womenSafetyMode: newVal,
+          bannerMessage: newVal ? "Safety Mode Active — Prioritizing lit roads, busy streets, and transit corridors" : "",
+          timeDeltaMessage: newVal 
+            ? (timeDeltaMinutes > 0 ? `Best safe route is ${timeDeltaMinutes} mins longer than fastest` : "Best safe route is also the fastest route!")
+            : ""
+        };
+        
+        if (onRoutesDataUpdate) {
+          onRoutesDataUpdate(updatedData);
+        }
+        setSelectedRouteIndex(0);
+      }
     }
   };
 

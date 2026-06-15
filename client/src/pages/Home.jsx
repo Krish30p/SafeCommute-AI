@@ -228,64 +228,74 @@ export default function Home({
       const duration = isDemo ? 14 * 60 : 12 * 60;
       const distance = isDemo ? 4200 : 3500;
       
+      const mockRoutes = [
+        {
+          name: "Route A",
+          label: "FASTEST",
+          geometry: { 
+            type: "LineString", 
+            coordinates: isDemo 
+              ? [[73.1812, 22.3072], [73.1818, 22.3060], [73.1830, 22.3050], [73.1825, 22.3020], [73.1800, 22.2995], [73.1765, 22.2980], [73.1723, 22.2960]]
+              : [originCoords, destinationCoords]
+          },
+          duration,
+          distance,
+          warnings: ["Poor lighting on 2 stretches"],
+          safetyScore: 61,
+          safetyBreakdown: {
+            score: 61,
+            breakdown: {
+              lighting: { score: 45, weight: 0.25 },
+              transitCoverage: { score: 72, weight: 0.20 },
+              incidentDensity: { score: 80, weight: 0.25 },
+              timeOfDay: { score: 50, weight: 0.20 },
+              crowdDensity: { score: 60, weight: 0.10 }
+            }
+          },
+          aiAdvisory: "Street illumination drops significantly near the underpass on Route A. During late hours, please take the well-lit Alkapuri route B instead."
+        },
+        {
+          name: "Route B",
+          label: "SAFEST",
+          geometry: { 
+            type: "LineString", 
+            coordinates: isDemo
+              ? [[73.1812, 22.3072], [73.1770, 22.3090], [73.1740, 22.3095], [73.1725, 22.3060], [73.1700, 22.3020], [73.1712, 22.2985], [73.1723, 22.2960]]
+              : [originCoords, [(originCoords[0] + destinationCoords[0]) / 2 + 0.005, (originCoords[1] + destinationCoords[1]) / 2 + 0.005], destinationCoords]
+          },
+          duration: duration + 4 * 60,
+          distance: distance + 700,
+          warnings: [],
+          safetyScore: 88,
+          safetyBreakdown: {
+            score: 88,
+            breakdown: {
+              lighting: { score: 92, weight: 0.25 },
+              transitCoverage: { score: 85, weight: 0.20 },
+              incidentDensity: { score: 90, weight: 0.25 },
+              timeOfDay: { score: 80, weight: 0.20 },
+              crowdDensity: { score: 95, weight: 0.10 }
+            }
+          },
+          aiAdvisory: "This route maintains high safety margins with 92/100 street lighting. It is highly recommended for late evening commutes."
+        }
+      ];
+
+      // Re-rank based on womenSafetyMode
+      const sortedRoutes = [...mockRoutes];
+      if (womenSafetyMode) {
+        sortedRoutes.sort((a, b) => b.safetyScore - a.safetyScore);
+      } else {
+        sortedRoutes.sort((a, b) => a.duration - b.duration);
+      }
+
       const mockResult = {
         originName: origin,
         destinationName: destination,
-        routes: [
-          {
-            name: "Route A",
-            label: "FASTEST",
-            geometry: { 
-              type: "LineString", 
-              coordinates: isDemo 
-                ? [[73.1812, 22.3072], [73.1818, 22.3060], [73.1830, 22.3050], [73.1825, 22.3020], [73.1800, 22.2995], [73.1765, 22.2980], [73.1723, 22.2960]]
-                : [originCoords, destinationCoords]
-            },
-            duration,
-            distance,
-            warnings: ["Poor lighting on 2 stretches"],
-            safetyScore: 61,
-            safetyBreakdown: {
-              score: 61,
-              breakdown: {
-                lighting: { score: 45, weight: 0.25 },
-                transitCoverage: { score: 72, weight: 0.20 },
-                incidentDensity: { score: 80, weight: 0.25 },
-                timeOfDay: { score: 50, weight: 0.20 },
-                crowdDensity: { score: 60, weight: 0.10 }
-              }
-            },
-            aiAdvisory: "Street illumination drops significantly near the underpass on Route A. During late hours, please take the well-lit Alkapuri route B instead."
-          },
-          {
-            name: "Route B",
-            label: "SAFEST",
-            geometry: { 
-              type: "LineString", 
-              coordinates: isDemo
-                ? [[73.1812, 22.3072], [73.1770, 22.3090], [73.1740, 22.3095], [73.1725, 22.3060], [73.1700, 22.3020], [73.1712, 22.2985], [73.1723, 22.2960]]
-                : [originCoords, [(originCoords[0] + destinationCoords[0]) / 2 + 0.005, (originCoords[1] + destinationCoords[1]) / 2 + 0.005], destinationCoords]
-            },
-            duration: duration + 4 * 60,
-            distance: distance + 700,
-            warnings: [],
-            safetyScore: 88,
-            safetyBreakdown: {
-              score: 88,
-              breakdown: {
-                lighting: { score: 92, weight: 0.25 },
-                transitCoverage: { score: 85, weight: 0.20 },
-                incidentDensity: { score: 90, weight: 0.25 },
-                timeOfDay: { score: 80, weight: 0.20 },
-                crowdDensity: { score: 95, weight: 0.10 }
-              }
-            },
-            aiAdvisory: "This route maintains high safety margins with 92/100 street lighting. It is highly recommended for late evening commutes."
-          }
-        ],
+        routes: sortedRoutes,
         womenSafetyMode,
-        bannerMessage: "Safety Mode Active — Prioritizing lit roads, busy streets, and transit corridors",
-        timeDeltaMessage: "Best safe route is 4 mins longer than fastest"
+        bannerMessage: womenSafetyMode ? "Safety Mode Active — Prioritizing lit roads, busy streets, and transit corridors" : "",
+        timeDeltaMessage: womenSafetyMode ? "Best safe route is 4 mins longer than fastest" : ""
       };
       
       onRoutesCalculated(mockResult);
