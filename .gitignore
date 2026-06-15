@@ -31,9 +31,31 @@ lerna-debug.log*
 .eslintcache
 .stylelintcache
 
-# Operating System files
+# Python runtime caches & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ML models and serialized assets
+*.pkl
+*.joblib
+*.model
+*.pb
+
+# IDEs, Editors & OS files
+.vscode/
+!.vscode/extensions.json
+.idea/
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-.env
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
