@@ -124,21 +124,32 @@ app.get('/api/health', (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
-server.listen(PORT, async () => {
-  console.log(`🚀 SafeCommute AI backend listening on port ${PORT}`);
-  
-  // Establish database connection
-  await connectDB();
-  
-  // Auto-seed if MongoDB is empty to ensure instant data availability
-  try {
-    const userCount = await db.User.countDocuments();
-    if (userCount === 0) {
-      console.log("🌱 MongoDB is empty. Seeding default data...");
-      const { seed } = require('./db/seed');
-      await seed();
+if (process.env.VERCEL) {
+  // On Vercel (serverless environment), connect to DB immediately when module is loaded
+  connectDB().catch(err => {
+    console.error("❌ Database connection error on Vercel initialization:", err.message);
+  });
+} else {
+  // Local environment, start persistent server listener
+  server.listen(PORT, async () => {
+    console.log(`🚀 SafeCommute AI backend listening on port ${PORT}`);
+    
+    // Establish database connection
+    await connectDB();
+    
+    // Auto-seed if MongoDB is empty to ensure instant data availability
+    try {
+      const userCount = await db.User.countDocuments();
+      if (userCount === 0) {
+        console.log("🌱 MongoDB is empty. Seeding default data...");
+        const { seed } = require('./db/seed');
+        await seed();
+      }
+    } catch (e) {
+      console.error("⚠️ Failed to auto-seed MongoDB database:", e.message);
     }
-  } catch (e) {
-    console.error("⚠️ Failed to auto-seed MongoDB database:", e.message);
-  }
-});
+  });
+}
+
+// Export the app instance for serverless runtime handlers (like Vercel)
+module.exports = app;
