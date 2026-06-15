@@ -6,7 +6,6 @@ import RouteComparison from '../components/Routes/RouteComparison';
 import WomenSafetyToggle from '../components/Safety/WomenSafetyToggle';
 import RiskForecaster from '../components/Routes/RiskForecaster';
 import { useAuth } from '../contexts/AuthContext';
-import { db, collection, query, where, getDocs } from '../firebase';
 
 export default function RouteSelection({ 
   routesData, 
@@ -35,12 +34,11 @@ export default function RouteSelection({
     const endCoord = coords[coords.length - 1];
 
     try {
-      // Fetch Firestore contacts for the logged-in user
+      // Fetch MongoDB contacts for the logged-in user
       let userContacts = [];
       if (currentUser) {
-        const q = query(collection(db, "contacts"), where("userId", "==", currentUser.uid));
-        const snap = await getDocs(q);
-        userContacts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snap = await axios.get('/api/contacts');
+        userContacts = snap.data || [];
       }
       const userName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'A SafeCommute User';
 

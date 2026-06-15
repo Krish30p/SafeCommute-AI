@@ -177,7 +177,10 @@ export default function AuthContainer() {
         </div>
 
         {/* Form card container with slide transition */}
-        <div className="w-full relative" style={{ minHeight: '420px' }}>
+        <div 
+          className="w-full relative transition-[min-height] duration-500 ease-out" 
+          style={{ minHeight: authPage === 'signup' ? '640px' : '420px' }}
+        >
 
           {/* LOGIN */}
           <div

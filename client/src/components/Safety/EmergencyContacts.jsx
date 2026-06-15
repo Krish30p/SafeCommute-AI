@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Phone, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { db, collection, query, where, getDocs, addDoc, deleteDoc, doc } from '../../firebase';
+import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function EmergencyContacts({ onClose }) {
@@ -15,22 +15,17 @@ export default function EmergencyContacts({ onClose }) {
   const [isAdding, setIsAdding] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Fetch Contacts from Firestore
+  // Fetch Contacts from MongoDB
   const fetchContacts = async () => {
     if (!currentUser) return;
     try {
       setLoading(true);
       setError(null);
-      const q = query(collection(db, "contacts"), where("userId", "==", currentUser.uid));
-      const querySnapshot = await getDocs(q);
-      const fetchedContacts = [];
-      querySnapshot.forEach((doc) => {
-        fetchedContacts.push({ id: doc.id, ...doc.data() });
-      });
-      setContacts(fetchedContacts);
+      const response = await axios.get('/api/contacts');
+      setContacts(response.data || []);
     } catch (err) {
       console.error('Failed to fetch contacts:', err);
-      setError('Failed to load your emergency contacts. Verify Firebase Firestore rules allow read access for authenticated users.');
+      setError('Failed to load your emergency contacts.');
     } finally {
       setLoading(false);
     }
@@ -40,7 +35,7 @@ export default function EmergencyContacts({ onClose }) {
     fetchContacts();
   }, [currentUser]);
 
-  // Add Contact to Firestore
+  // Add Contact to MongoDB
   const handleAddContact = async (e) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !currentUser) return;
@@ -54,11 +49,9 @@ export default function EmergencyContacts({ onClose }) {
     try {
       setIsAdding(true);
       setError(null);
-      await addDoc(collection(db, "contacts"), {
-        userId: currentUser.uid,
+      await axios.post('/api/contacts', {
         name: name.trim(),
-        phone: phone.trim(),
-        createdAt: new Date().toISOString()
+        phone: phone.trim()
       });
       
       setSuccessMsg('Contact added successfully!');
@@ -75,10 +68,10 @@ export default function EmergencyContacts({ onClose }) {
     }
   };
 
-  // Remove Contact from Firestore
+  // Remove Contact from MongoDB
   const handleRemoveContact = async (id) => {
     try {
-      await deleteDoc(doc(db, "contacts", id));
+      await axios.delete(`/api/contacts/${id}`);
       setContacts(contacts.filter(c => c.id !== id));
       setSuccessMsg('Contact removed.');
       setTimeout(() => setSuccessMsg(''), 3000);

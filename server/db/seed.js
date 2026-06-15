@@ -1,5 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const db = require('./index');
 
 const incidents = [
@@ -47,8 +48,11 @@ async function seed() {
     await db.Trip.deleteMany({});
 
     // Seed default user
+    const hashedPassword = await bcrypt.hash('password123', 10);
     const defaultUser = await db.User.create({
       _id: "d83fb22c-a0e1-45df-a337-b4d4de46cb51",
+      email: "aditi@example.com",
+      password: hashedPassword,
       name: "Aditi Sharma",
       phone: "+919876543210",
       created_at: new Date()

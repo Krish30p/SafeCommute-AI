@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, User, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, ArrowLeft, Phone } from 'lucide-react';
 
 export default function Signup({ onNavigateToLogin }) {
   const { signup } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState('');
@@ -22,10 +23,18 @@ export default function Signup({ onNavigateToLogin }) {
       return setError('Name is required for SOS alerts');
     }
 
+    if (!phone.trim()) {
+      return setError('Phone number is required');
+    }
+
+    if (!phone.startsWith('+')) {
+      return setError('Phone number must start with country code (e.g. +91XXXXXXXXXX)');
+    }
+
     try {
       setError('');
       setLoading(true);
-      await signup(email, password, name);
+      await signup(email, password, name, phone);
     } catch (err) {
       setError('Failed to create an account. ' + err.message);
     } finally {
@@ -67,6 +76,26 @@ export default function Signup({ onNavigateToLogin }) {
               />
             </div>
             <p className="mt-1 ml-1 text-xs text-gray-500 font-medium">Required for SOS WhatsApp alerts</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">
+              Phone Number
+            </label>
+            <div className="relative rounded-xl shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Phone className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="block w-full pl-11 pr-4 py-2.5 bg-white/60 border border-gray-200/60 rounded-xl leading-5 text-gray-800 placeholder-gray-400 input-glow transition-all duration-300 sm:text-sm"
+                placeholder="+919876543210"
+              />
+            </div>
+            <p className="mt-1 ml-1 text-xs text-gray-500 font-medium">Must include country code (e.g. +91)</p>
           </div>
 
           <div>

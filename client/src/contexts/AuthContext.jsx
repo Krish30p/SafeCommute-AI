@@ -1,12 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  auth,
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  updateProfile
-} from '../firebase';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -18,31 +11,77 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, name) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Add display name to the user profile
-    await updateProfile(userCredential.user, {
-      displayName: name
+  // Set default token if exists in local storage
+  useEffect(() => {
+    const token = localStorage.getItem('safecommute_token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.get('/api/auth/me')
+        .then(response => {
+          if (response.data?.success) {
+            setCurrentUser(response.data.user);
+          } else {
+            localStorage.removeItem('safecommute_token');
+            delete axios.defaults.headers.common['Authorization'];
+            setCurrentUser(null);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to restore session:', err.message);
+          localStorage.removeItem('safecommute_token');
+          delete axios.defaults.headers.common['Authorization'];
+          setCurrentUser(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  async function signup(email, password, name, phone) {
+    const response = await axios.post('/api/auth/signup', {
+      email,
+      password,
+      name,
+      phone
     });
-    return userCredential;
+
+    if (response.data?.success) {
+      const { token, user } = response.data;
+      localStorage.setItem('safecommute_token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setCurrentUser(user);
+      return user;
+    } else {
+      throw new Error(response.data?.error || 'Registration failed');
+    }
   }
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password) {
+    const response = await axios.post('/api/auth/login', {
+      email,
+      password
+    });
+
+    if (response.data?.success) {
+      const { token, user } = response.data;
+      localStorage.setItem('safecommute_token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setCurrentUser(user);
+      return user;
+    } else {
+      throw new Error(response.data?.error || 'Login failed');
+    }
   }
 
   function logout() {
-    return signOut(auth);
+    localStorage.removeItem('safecommute_token');
+    delete axios.defaults.headers.common['Authorization'];
+    setCurrentUser(null);
+    return Promise.resolve();
   }
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, user => {
-      setCurrentUser(user);
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
 
   const value = {
     currentUser,

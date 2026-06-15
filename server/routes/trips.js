@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const schedule = require('node-schedule');
 const { User, TrustedContact, Trip } = require('../db');
 const twilioService = require('../services/twilioService');
+const authMiddleware = require('../middleware/auth');
 
 // In-memory registry to cancel scheduled node-schedule jobs upon arrival
 const scheduledJobs = new Map(); // tripId -> { promptJob, alertJob }
@@ -83,9 +84,8 @@ function cancelTripJobs(tripId) {
 }
 
 // POST /api/trips/start - Start a safe trip
-router.post('/start', async (req, res) => {
+router.post('/start', authMiddleware, async (req, res) => {
   const { 
-    userId, 
     originLat, originLng, 
     destinationLat, destinationLng,
     originName, destinationName,
@@ -96,14 +96,7 @@ router.post('/start', async (req, res) => {
   } = req.body;
 
   try {
-    // Default to seeded user if not provided
-    let finalUserId = userId;
-    if (!finalUserId) {
-      const defaultUser = await User.findOne();
-      if (defaultUser) {
-        finalUserId = defaultUser._id;
-      }
-    }
+    const finalUserId = req.user._id;
 
     const shareToken = uuidv4();
     
@@ -168,7 +161,7 @@ router.post('/start', async (req, res) => {
 });
 
 // POST /api/trips/:id/end - End trip successfully
-router.post('/:id/end', async (req, res) => {
+router.post('/:id/end', authMiddleware, async (req, res) => {
   const tripId = req.params.id;
 
   try {
@@ -189,7 +182,7 @@ router.post('/:id/end', async (req, res) => {
 });
 
 // POST /api/trips/:id/checkin - Confirm safe arrival
-router.post('/:id/checkin', async (req, res) => {
+router.post('/:id/checkin', authMiddleware, async (req, res) => {
   const tripId = req.params.id;
 
   try {
@@ -234,7 +227,7 @@ router.get('/track/:token', async (req, res) => {
 });
 
 // POST /api/trips/:id/simulate-expiry - Demo-only API to trigger alerts immediately
-router.post('/:id/simulate-expiry', async (req, res) => {
+router.post('/:id/simulate-expiry', authMiddleware, async (req, res) => {
   const tripId = req.params.id;
   const jobs = scheduledJobs.get(tripId);
 

@@ -1,15 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { User, TrustedContact } = require('../db');
+const authMiddleware = require('../middleware/auth');
 
-// GET /api/contacts - List all emergency contacts for the default user
-router.get('/', async (req, res) => {
+// GET /api/contacts - List all emergency contacts for the authenticated user
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findOne();
-    if (!user) {
-      return res.json([]);
-    }
-    const contacts = await TrustedContact.find({ user_id: user._id });
+    const contacts = await TrustedContact.find({ user_id: req.user._id });
     res.json(contacts);
   } catch (err) {
     console.error('Failed to fetch contacts:', err.message);
@@ -18,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/contacts - Add a new emergency contact
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   const { name, phone } = req.body;
 
   if (!name || !phone) {
@@ -26,14 +23,8 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Get or create default user
-    let user = await User.findOne();
-    if (!user) {
-      user = await User.create({ name: 'Default User', phone: '+910000000000' });
-    }
-
     const contact = await TrustedContact.create({
-      user_id: user._id,
+      user_id: req.user._id,
       name: name.trim(),
       phone: phone.trim()
     });
@@ -46,9 +37,12 @@ router.post('/', async (req, res) => {
 });
 
 // DELETE /api/contacts/:id - Remove an emergency contact
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const result = await TrustedContact.findByIdAndDelete(req.params.id);
+    const result = await TrustedContact.findOneAndDelete({
+      _id: req.params.id,
+      user_id: req.user._id
+    });
     if (!result) {
       return res.status(404).json({ error: 'Contact not found' });
     }

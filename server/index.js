@@ -58,6 +58,7 @@ const incidentsRouter = require('./routes/incidents');
 const transitRouter = require('./routes/transit');
 const forecastRouter = require('./routes/forecast');
 const contactsRouter = require('./routes/contacts');
+const authRouter = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -85,6 +86,7 @@ twilioService.setSocketIo(io);
 initTripSocket(io);
 
 // Mount API routes
+app.use('/api/auth', authRouter);
 app.use('/api/routes', routingRouter);
 app.use('/api/trips', tripsRouter);
 app.use('/api/sos', sosRouter);

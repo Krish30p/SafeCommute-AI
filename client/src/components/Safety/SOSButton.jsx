@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
-import { db, collection, query, where, getDocs } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function SOSButton({ tripId, location }) {
@@ -24,10 +23,9 @@ export default function SOSButton({ tripId, location }) {
     try {
       if (!currentUser) throw new Error("Authentication required");
 
-      // Fetch contacts from Firestore
-      const q = query(collection(db, "contacts"), where("userId", "==", currentUser.uid));
-      const querySnapshot = await getDocs(q);
-      const userContacts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Fetch contacts from MongoDB
+      const contactsRes = await axios.get('/api/contacts');
+      const userContacts = contactsRes.data || [];
 
       if (userContacts.length === 0) {
         throw new Error("No emergency contacts saved in your profile.");
