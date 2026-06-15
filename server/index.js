@@ -63,9 +63,12 @@ const authRouter = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS to support frontend dev server connection
+// Configure CORS to support frontend connections (both dev and deployed environments)
 const corsOptions = {
-  origin: process.env.VITE_APP_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Reflect the requesting origin back, or allow server-to-server calls if origin is undefined
+    callback(null, origin || true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 };
