@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Search, MapPin, ShieldAlert, Sparkles, Navigation, ShieldCheck, LogOut } from 'lucide-react';
 import MapView from '../components/Map/MapView';
@@ -20,6 +20,86 @@ const MOCK_LOCATIONS = [
   { name: "MSU Baroda Campus", coords: [73.1840, 22.3100] }
 ];
 
+// Helper to score and rank geocoding suggestions based on query relevance and transit bias
+const scoreSuggestion = (name, query) => {
+  const normalizedName = name.toLowerCase();
+  const normalizedQuery = query.toLowerCase().trim();
+  
+  let score = 0;
+  
+  // 1. Exact match
+  if (normalizedName === normalizedQuery) {
+    score += 2000;
+  }
+  
+  // 2. Starts with query
+  if (normalizedName.startsWith(normalizedQuery)) {
+    score += 800;
+  }
+  
+  // 3. Contains the exact phrase
+  if (normalizedName.includes(normalizedQuery)) {
+    score += 400;
+  }
+  
+  // 4. Word-by-word match
+  const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
+  let wordsFound = 0;
+  queryWords.forEach(word => {
+    if (normalizedName.includes(word)) {
+      wordsFound++;
+      // Word boundary match bonus
+      const regex = new RegExp('\\b' + word + '\\b');
+      if (regex.test(normalizedName)) {
+        score += 150;
+      } else {
+        score += 30;
+      }
+    }
+  });
+  
+  if (wordsFound === queryWords.length && queryWords.length > 1) {
+    score += 300;
+  }
+  
+  // 5. Starts with any of the query words bonus (e.g. starts with "Central" when searching "Chennai Central")
+  if (queryWords[0] && normalizedName.startsWith(queryWords[0])) {
+    score += 400;
+  }
+  if (queryWords[1] && normalizedName.startsWith(queryWords[1])) {
+    score += 300;
+  }
+  
+  // 6. Transit and landmark keywords (SafeCommute routing priority)
+  const transitHubKeywords = ['station', 'stop', 'terminal', 'airport', 'metro', 'railway', 'junction'];
+  const landmarkKeywords = ['central', 'garden', 'mall', 'hospital', 'square', 'cross', 'road', 'st', 'avenue', 'street'];
+  
+  let hasTransitHub = false;
+  transitHubKeywords.forEach(keyword => {
+    if (normalizedName.includes(keyword)) {
+      hasTransitHub = true;
+    }
+  });
+  
+  let hasLandmark = false;
+  landmarkKeywords.forEach(keyword => {
+    if (normalizedName.includes(keyword)) {
+      hasLandmark = true;
+    }
+  });
+  
+  if (hasTransitHub) {
+    score += 800; // Direct transit hubs get a massive boost
+  } else if (hasLandmark) {
+    score += 300; // Streets and general landmarks get a moderate boost
+  }
+
+  // 7. Prefer shorter names for same relevance (less verbose addresses)
+  score += Math.max(0, 100 - name.length);
+  
+  return score;
+};
+
 export default function Home({ 
   userLocation, 
   incidents, 
@@ -31,18 +111,21 @@ export default function Home({
   const { currentUser, logout } = useAuth();
   const [origin, setOrigin] = useState("Vadodara Railway Station");
   const [originCoords, setOriginCoords] = useState([73.1812, 22.3072]);
-  const [destination, setDestination] = useState("Akota Garden Stop");
-  const [destinationCoords, setDestinationCoords] = useState([73.1723, 22.2960]);
+  const [destination, setDestination] = useState("");
+  const [destinationCoords, setDestinationCoords] = useState(null);
   
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
-  // Sync origin with exact current location when userLocation updates
+  const hasSyncedInitialLocation = useRef(false);
+
+  // Sync origin with exact current location ONLY ONCE initially when userLocation first loads
   useEffect(() => {
-    if (userLocation && userLocation.lat && userLocation.lng) {
+    if (userLocation && userLocation.lat && userLocation.lng && !hasSyncedInitialLocation.current) {
       setOrigin("Current Location");
       setOriginCoords([userLocation.lng, userLocation.lat]);
+      hasSyncedInitialLocation.current = true;
     }
   }, [userLocation]);
 
@@ -62,31 +145,62 @@ export default function Home({
       const filtered = MOCK_LOCATIONS.filter(loc => 
         loc.name.toLowerCase().includes(query.toLowerCase())
       );
+      filtered.sort((a, b) => scoreSuggestion(b.name, query) - scoreSuggestion(a.name, query));
       setSuggestions(filtered);
       return;
     }
 
-    // Real Mapbox Geocoding call
+    // Real Mapbox Geocoding call (we execute two parallel queries to catch stations/stops and merge them)
     try {
-      const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`, {
-        params: {
-          access_token: mapboxToken,
-          proximity: userLocation && userLocation.lng ? `${userLocation.lng},${userLocation.lat}` : '73.1812,22.3072',
-          country: 'IN',
-          types: 'poi,address,neighborhood,place',
-          limit: 10
+      const [res1, res2] = await Promise.all([
+        axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`, {
+          params: {
+            access_token: mapboxToken,
+            proximity: userLocation && userLocation.lng ? `${userLocation.lng},${userLocation.lat}` : '73.1812,22.3072',
+            country: 'IN',
+            types: 'poi,address,neighborhood,place',
+            limit: 8
+          }
+        }),
+        axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query + " station")}.json`, {
+          params: {
+            access_token: mapboxToken,
+            proximity: userLocation && userLocation.lng ? `${userLocation.lng},${userLocation.lat}` : '73.1812,22.3072',
+            country: 'IN',
+            types: 'poi,address,neighborhood,place',
+            limit: 8
+          }
+        })
+      ]);
+
+      const allFeatures = [
+        ...(res1.data?.features || []),
+        ...(res2.data?.features || [])
+      ];
+
+      // Deduplicate by place_name
+      const places = [];
+      const seenNames = new Set();
+      for (const f of allFeatures) {
+        if (!seenNames.has(f.place_name)) {
+          seenNames.add(f.place_name);
+          places.push({
+            name: f.place_name,
+            coords: f.geometry.coordinates
+          });
         }
-      });
-      const places = response.data.features.map(f => ({
-        name: f.place_name,
-        coords: f.geometry.coordinates
-      }));
+      }
+      
+      // Sort suggestions by query relevance and transit bias
+      places.sort((a, b) => scoreSuggestion(b.name, query) - scoreSuggestion(a.name, query));
+      
       setSuggestions(places);
     } catch (err) {
       console.warn("Geocoding failed, fallback to mock list:", err.message);
       const filtered = MOCK_LOCATIONS.filter(loc => 
         loc.name.toLowerCase().includes(query.toLowerCase())
       );
+      filtered.sort((a, b) => scoreSuggestion(b.name, query) - scoreSuggestion(a.name, query));
       setSuggestions(filtered);
     }
   };
@@ -181,10 +295,10 @@ export default function Home({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col">
-      {/* Search overlay panel */}
-      <div className="absolute top-4 left-4 right-4 z-20 glass-panel p-4 rounded-2xl shadow-lg flex flex-col gap-3 max-w-md md:left-6">
-        <div className="flex items-center justify-between pb-1 border-b border-gray-200">
+    <div className="relative w-full h-full flex flex-col md:flex-row">
+      {/* Left Sidebar Panel */}
+      <div className="w-full h-[55%] md:w-1/3 md:h-full bg-white border-t md:border-t-0 md:border-r border-gray-200 p-4 md:p-6 overflow-y-auto order-2 md:order-1 flex flex-col gap-4 shadow-lg z-20">
+        <div className="flex items-center justify-between pb-2 border-b border-gray-200">
           <div className="flex items-center gap-1.5">
             <Sparkles className="text-googleBlue animate-pulse" size={16} />
             <h1 className="text-xs font-black tracking-widest text-gray-800 uppercase">SafeCommute AI</h1>
@@ -212,7 +326,7 @@ export default function Home({
         </div>
 
         {/* Inputs */}
-        <div className="space-y-2 relative">
+        <div className="space-y-3 relative">
           
           {/* Origin Search */}
           <div className="relative">
@@ -225,7 +339,7 @@ export default function Home({
               value={origin}
               placeholder="Search Starting point..."
               onChange={(e) => handleQueryChange(e.target.value, setOrigin, setOriginCoords, setOriginSuggestions)}
-              className="w-full bg-white text-xs text-gray-900 pl-10 pr-10 py-3 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
+              className="w-full bg-white text-xs text-gray-900 pl-10 pr-10 py-3.5 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
             />
             {/* Live Location Pickup Button */}
             <button 
@@ -274,7 +388,7 @@ export default function Home({
               value={destination}
               placeholder="Search Destination..."
               onChange={(e) => handleQueryChange(e.target.value, setDestination, setDestinationCoords, setDestSuggestions)}
-              className="w-full bg-white text-xs text-gray-900 pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
+              className="w-full bg-white text-xs text-gray-900 pl-10 pr-4 py-3.5 rounded-xl border border-gray-300 focus:border-googleBlue focus:ring-1 focus:ring-googleBlue focus:outline-none placeholder-gray-400 font-semibold shadow-sm"
             />
             {destSuggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
@@ -297,13 +411,13 @@ export default function Home({
         </div>
 
         {/* Toggles and Find button */}
-        <div className="flex items-center gap-2 justify-between mt-1">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2">
           <WomenSafetyToggle onChange={onSafetyModeChange} />
           
           <button
             onClick={handleSearchRoutes}
-            disabled={loading}
-            className="flex-1 py-2.5 bg-googleBlue hover:bg-blue-600 text-white rounded-full text-xs font-extrabold tracking-wide transition-all shadow-md flex items-center justify-center gap-1"
+            disabled={loading || !destinationCoords}
+            className="flex-1 py-3.5 bg-googleBlue hover:bg-blue-600 text-white rounded-xl text-xs font-extrabold tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ minHeight: '44px' }}
             id="find-routes-button"
           >
@@ -313,7 +427,7 @@ export default function Home({
       </div>
 
       {/* Main Map Box */}
-      <div className="flex-1 w-full h-full">
+      <div className="w-full h-[45%] md:w-2/3 md:h-full relative order-1 md:order-2">
         <MapView 
           userLocation={userLocation} 
           incidents={incidents} 
