@@ -68,15 +68,17 @@ const notifyListeners = () => {
   mockAuthObject.listeners.forEach(cb => cb(mockAuthObject.currentUser));
 };
 
-// Load initial user state if any from localStorage
-try {
-  const savedUser = localStorage.getItem('safecommute_mock_user');
-  if (savedUser) {
-    mockAuthObject.currentUser = JSON.parse(savedUser);
-    auth.currentUser = mockAuthObject.currentUser;
+// Load initial user state if any from localStorage (ONLY in mock mode)
+if (!isFirebaseConfigured) {
+  try {
+    const savedUser = localStorage.getItem('safecommute_mock_user');
+    if (savedUser) {
+      mockAuthObject.currentUser = JSON.parse(savedUser);
+      auth.currentUser = mockAuthObject.currentUser;
+    }
+  } catch (e) {
+    console.error("Failed to parse mock user from localStorage:", e);
   }
-} catch (e) {
-  console.error("Failed to parse mock user from localStorage:", e);
 }
 
 // --- Auth Functions ---
@@ -92,17 +94,19 @@ export const createUserWithEmailAndPassword = async (authObj, email, password) =
     const newUser = {
       uid: 'mock-uid-' + Math.random().toString(36).substring(2, 11),
       email,
-      displayName: ''
+      displayName: '',
+      password // Store password in the local list for mock verification
     };
     users.push(newUser);
     localStorage.setItem('safecommute_mock_users', JSON.stringify(users));
     
-    mockAuthObject.currentUser = newUser;
-    auth.currentUser = newUser;
-    localStorage.setItem('safecommute_mock_user', JSON.stringify(newUser));
+    const { password: _, ...userWithoutPassword } = newUser;
+    mockAuthObject.currentUser = userWithoutPassword;
+    auth.currentUser = userWithoutPassword;
+    localStorage.setItem('safecommute_mock_user', JSON.stringify(userWithoutPassword));
     notifyListeners();
     
-    return { user: newUser };
+    return { user: userWithoutPassword };
   }
   return realCreateUserWithEmailAndPassword(authObj, email, password);
 };
@@ -116,11 +120,18 @@ export const signInWithEmailAndPassword = async (authObj, email, password) => {
       err.code = "auth/user-not-found";
       throw err;
     }
-    mockAuthObject.currentUser = user;
-    auth.currentUser = user;
-    localStorage.setItem('safecommute_mock_user', JSON.stringify(user));
+    // Check password if it is set in mock storage (allow old mock users without password to log in)
+    if (user.password !== undefined && user.password !== password) {
+      const err = new Error("Firebase: Error (auth/wrong-password).");
+      err.code = "auth/wrong-password";
+      throw err;
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    mockAuthObject.currentUser = userWithoutPassword;
+    auth.currentUser = userWithoutPassword;
+    localStorage.setItem('safecommute_mock_user', JSON.stringify(userWithoutPassword));
     notifyListeners();
-    return { user };
+    return { user: userWithoutPassword };
   }
   return realSignInWithEmailAndPassword(authObj, email, password);
 };

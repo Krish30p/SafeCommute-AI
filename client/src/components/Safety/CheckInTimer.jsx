@@ -103,8 +103,8 @@ export default function CheckInTimer({ trip, onCheckInComplete }) {
     <div className="glass-panel p-4 rounded-xl border border-darkBorder flex flex-col space-y-4">
       <div className="flex justify-between items-start">
         <div>
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest block">Check-in Timer</span>
-          <span className="text-sm font-bold text-gray-200">
+          <span className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest block">Check-in Timer</span>
+          <span className="text-sm font-bold text-gray-700">
             Arriving at <span className="text-safeGreen">{trip.destination_name}</span>
           </span>
         </div>
@@ -114,7 +114,7 @@ export default function CheckInTimer({ trip, onCheckInComplete }) {
           <button
             onClick={handleSimulateExpiry}
             disabled={isSimulatingExpiry}
-            className="text-[10px] px-2.5 py-1 bg-red-950/40 hover:bg-red-900/40 text-red-400 font-bold border border-red-800/50 rounded-lg transition-colors cursor-pointer"
+            className="text-[10px] px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-500 font-bold border border-red-200 rounded-lg transition-colors cursor-pointer"
           >
             {isSimulatingExpiry ? 'Simulating...' : '⚡ Test Expiry'}
           </button>
@@ -126,7 +126,7 @@ export default function CheckInTimer({ trip, onCheckInComplete }) {
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <div className="text-gray-400 text-xs font-semibold">ETA Remaining</div>
-            <div className="text-2xl font-black text-white tracking-wide">
+            <div className="text-2xl font-black text-gray-900 tracking-wide">
               {formatDuration(timeLeftSeconds)}
             </div>
           </div>
@@ -140,18 +140,18 @@ export default function CheckInTimer({ trip, onCheckInComplete }) {
         </div>
       ) : (
         // --- ETA EXPIRED DANGER SCREEN ---
-        <div className="bg-red-950/20 border border-red-900/40 p-4 rounded-xl space-y-4">
+        <div className="bg-red-50 border border-red-200 p-4 rounded-xl space-y-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="text-dangerRed shrink-0 mt-0.5 animate-bounce" size={20} />
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-red-400">Did you arrive safely?</h4>
-              <p className="text-xs text-gray-300 font-medium leading-relaxed">
+               <h4 className="text-sm font-bold text-red-600">Did you arrive safely?</h4>
+               <p className="text-xs text-gray-600 font-medium leading-relaxed">
                 Your estimated arrival time has passed. Please confirm your safety now.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-red-900/30">
+          <div className="flex items-center justify-between pt-2 border-t border-red-200">
             <div className="space-y-0.5">
               <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Contacts Alert In:</div>
               <div className="text-2xl font-black text-dangerRed font-mono animate-pulse">

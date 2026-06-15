@@ -10,7 +10,7 @@ import PublicTracking from './pages/PublicTracking';
 import ReportIncident from './components/Incidents/ReportIncident';
 import AuthContainer from './pages/Auth/AuthContainer';
 import CustomCursor from './components/CustomCursor';
-import { Map as MapIcon, Navigation, AlertOctagon, HelpCircle } from 'lucide-react';
+import { Map as MapIcon, Navigation, AlertOctagon } from 'lucide-react';
 
 function AppContent() {
   const { currentUser } = useAuth();
@@ -32,7 +32,7 @@ function AppContent() {
   const socketClient = useSocket();
 
   // 1. Fetch initial incident pins based on location
-  const fetchIncidents = async (lat, lng) => {
+  const fetchIncidents = React.useCallback(async (lat, lng) => {
     try {
       const params = {};
       if (lat && lng) {
@@ -44,7 +44,7 @@ function AppContent() {
     } catch (err) {
       console.warn("Failed to fetch initial incidents:", err.message);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (geoTracker.location && geoTracker.location.lat) {
@@ -62,7 +62,7 @@ function AppContent() {
         setPage('track');
       }
     }
-  }, [geoTracker.location?.lat, geoTracker.location?.lng]);
+  }, [geoTracker.location?.lat, geoTracker.location?.lng, fetchIncidents]);
 
   // 2. Listen for socket real-time broadcasts
   useEffect(() => {

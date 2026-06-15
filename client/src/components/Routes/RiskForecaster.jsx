@@ -80,7 +80,7 @@ export default function RiskForecaster({ originCoords, destinationCoords }) {
         <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 mt-2">
           <div className="flex justify-between items-center mb-2">
             <div className="text-xs text-gray-400">Predicted Risk Index</div>
-            <div className={`font-bold ${forecast.predicted_risk > 70 ? 'text-dangerRed' : forecast.predicted_risk > 40 ? 'text-warningYellow' : 'text-safeGreen'}`}>
+            <div className={`font-bold ${forecast.predicted_risk > 70 ? 'text-dangerRed' : forecast.predicted_risk > 40 ? 'text-warnAmber' : 'text-safeGreen'}`}>
               {forecast.predicted_risk.toFixed(1)} / 100
             </div>
           </div>

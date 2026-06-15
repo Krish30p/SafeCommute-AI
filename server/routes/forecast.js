@@ -86,12 +86,67 @@ function formatTime(date) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+function runJsForecastFallback(data) {
+  const { hour, day_of_week, incident_density, has_event, is_raining } = data;
+  
+  // Base risk starts at incident density
+  let risk = incident_density * 0.6;
+  
+  // Time factors: high risk at night (10PM - 4AM), lower during typical work/commute hours
+  if (hour >= 22 || hour <= 4) {
+    risk += 25;
+  } else if (hour >= 18 && hour < 22) {
+    risk += 12;
+  } else if (hour >= 8 && hour < 17) {
+    risk += 5;
+  }
+  
+  // Weekend adjustment
+  if (day_of_week === 0 || day_of_week === 6) {
+    risk += 3;
+  }
+  
+  // Crowd event adds to risk
+  if (has_event) {
+    risk += 15;
+  }
+  
+  // Rain adds to risk
+  if (is_raining) {
+    risk += 10;
+  }
+  
+  // Normalize between 10 and 95
+  const predicted_risk = Math.max(10, Math.min(95, Math.round(risk * 10) / 10));
+  
+  return {
+    predicted_risk,
+    factors: {
+      hour,
+      incident_density,
+      has_event,
+      is_raining
+    }
+  };
+}
+
 function runPythonScript(scriptPath, data) {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', [scriptPath, JSON.stringify(data)]);
+    let pythonProcess;
+    try {
+      pythonProcess = spawn('python', [scriptPath, JSON.stringify(data)]);
+    } catch (e) {
+      console.warn("⚠️ Failed to spawn Python process. Using JS heuristic fallback:", e.message);
+      return resolve(runJsForecastFallback(data));
+    }
 
     let output = '';
     let errorOutput = '';
+
+    pythonProcess.on('error', (err) => {
+      console.warn("⚠️ Python process error. Using JS heuristic fallback:", err.message);
+      resolve(runJsForecastFallback(data));
+    });
 
     pythonProcess.stdout.on('data', (chunk) => {
       output += chunk.toString();
@@ -103,17 +158,20 @@ function runPythonScript(scriptPath, data) {
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        return reject(new Error(`Python script exited with code ${code}: ${errorOutput}`));
+        console.warn(`⚠️ Python script exited with code ${code}. Using JS heuristic fallback.`);
+        return resolve(runJsForecastFallback(data));
       }
       try {
         const result = JSON.parse(output.trim());
         if (result.error) {
-          reject(new Error(result.error));
+          console.warn(`⚠️ Python script returned error: ${result.error}. Using JS heuristic fallback.`);
+          resolve(runJsForecastFallback(data));
         } else {
           resolve(result);
         }
       } catch (err) {
-        reject(new Error(`Failed to parse python output: ${output} - Error: ${err.message}`));
+        console.warn(`⚠️ Failed to parse python output: ${err.message}. Using JS heuristic fallback.`);
+        resolve(runJsForecastFallback(data));
       }
     });
   });

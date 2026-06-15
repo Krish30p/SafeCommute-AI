@@ -144,15 +144,28 @@ export default function MapView({
 
   // 3. Mapbox Draw Routes
   useEffect(() => {
-    if (isMockMap || !map || routes.length === 0) return;
+    if (isMockMap || !map) return;
 
-    // Clear route layers
-    routes.forEach((r, idx) => {
-      const layerId = `route-layer-${idx}`;
-      const sourceId = `route-source-${idx}`;
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    });
+    // Clear route layers and sources dynamically by checking current map style
+    const style = map.getStyle();
+    if (style) {
+      if (style.layers) {
+        style.layers.forEach(layer => {
+          if (layer.id.startsWith('route-layer-')) {
+            map.removeLayer(layer.id);
+          }
+        });
+      }
+      if (style.sources) {
+        Object.keys(style.sources).forEach(sourceId => {
+          if (sourceId.startsWith('route-source-')) {
+            map.removeSource(sourceId);
+          }
+        });
+      }
+    }
+
+    if (routes.length === 0) return;
 
     // Draw each route
     routes.forEach((r, idx) => {

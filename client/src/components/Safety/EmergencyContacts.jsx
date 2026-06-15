@@ -90,22 +90,22 @@ export default function EmergencyContacts({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-darkBg border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-[#0A0F18]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-googleBlue/10 flex items-center justify-center">
               <Phone className="text-googleBlue" size={16} />
             </div>
             <div>
-              <h2 className="text-white font-bold text-sm">Emergency Contacts</h2>
-              <p className="text-gray-400 text-xs">Manage who receives your SOS alerts</p>
+              <h2 className="text-gray-900 font-bold text-sm">Emergency Contacts</h2>
+              <p className="text-gray-500 text-xs">Manage who receives your SOS alerts</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
             <X size={20} />
           </button>
@@ -116,20 +116,20 @@ export default function EmergencyContacts({ onClose }) {
           
           {/* Notifications */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-900 flex items-start gap-2 text-red-400 text-xs">
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2 text-red-600 text-xs">
               <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
           {successMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-green-900/30 border border-green-900 flex items-start gap-2 text-green-400 text-xs animate-fade-in">
+            <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-start gap-2 text-green-600 text-xs animate-fade-in">
               <CheckCircle2 size={14} className="mt-0.5 flex-shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {/* Add New Contact Form */}
-          <form onSubmit={handleAddContact} className="bg-[#0A0F18] border border-gray-800 rounded-xl p-4 mb-6">
+          <form onSubmit={handleAddContact} className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
             <h3 className="text-gray-300 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <UserPlus size={14} className="text-googleBlue" />
               Add New Contact
@@ -141,7 +141,7 @@ export default function EmergencyContacts({ onClose }) {
                   placeholder="Contact Name (e.g. Mom)" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-darkBg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-googleBlue"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-googleBlue"
                   required
                 />
               </div>
@@ -151,7 +151,7 @@ export default function EmergencyContacts({ onClose }) {
                   placeholder="WhatsApp Number (e.g. +1415...)" 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-darkBg border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-googleBlue"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-googleBlue"
                   required
                 />
                 <p className="text-[10px] text-gray-500 mt-1.5 ml-1">Must include country code (e.g., +91). Must be registered in Twilio Sandbox.</p>
@@ -175,17 +175,17 @@ export default function EmergencyContacts({ onClose }) {
                 <div className="w-5 h-5 border-2 border-googleBlue border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : contacts.length === 0 ? (
-              <div className="text-center py-6 px-4 bg-[#0A0F18] rounded-xl border border-dashed border-gray-800">
+              <div className="text-center py-6 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                 <p className="text-gray-500 text-sm">No emergency contacts saved yet.</p>
                 <p className="text-gray-600 text-xs mt-1">Add a trusted friend or family member above.</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {contacts.map((contact) => (
-                  <div key={contact.id} className="flex items-center justify-between p-3 bg-[#0A0F18] border border-gray-800 rounded-xl hover:border-gray-700 transition-colors">
+                  <div key={contact.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
                     <div>
-                      <h4 className="text-white text-sm font-medium">{contact.name}</h4>
-                      <p className="text-gray-400 text-xs font-mono mt-0.5">{contact.phone}</p>
+                      <h4 className="text-gray-900 text-sm font-medium">{contact.name}</h4>
+                      <p className="text-gray-500 text-xs font-mono mt-0.5">{contact.phone}</p>
                     </div>
                     <button
                       onClick={() => handleRemoveContact(contact.id)}
