@@ -14,7 +14,7 @@ export default function PublicTracking({ token, onBackHome }) {
   const [tripEnded, setTripEnded] = useState(false);
 
   // Initialize socket using proxy-friendly root relative path
-  const socketClient = useSocket();
+  const socketClient = useSocket(import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000');
 
   // 1. Fetch trip data
   useEffect(() => {

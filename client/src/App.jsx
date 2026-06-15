@@ -29,7 +29,7 @@ function AppContent() {
   const geoTracker = useGeolocation();
 
   // Initialize Socket.io connection using proxy-friendly root relative path
-  const socketClient = useSocket();
+  const socketClient = useSocket(import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000');
 
   // 1. Fetch initial incident pins based on location
   const fetchIncidents = React.useCallback(async (lat, lng) => {
